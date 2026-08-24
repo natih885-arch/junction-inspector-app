@@ -6,4 +6,5 @@ matplotlib
 folium
 streamlit-folium
 geopy
+geopy
 streamlit-drawable-canvas
