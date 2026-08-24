@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+import json
 from PIL import Image
 import folium
 from folium.plugins import Draw
@@ -79,7 +80,7 @@ with tab1:
         except Exception:
             st.warning("⚠️ לא נשלף מיקום מדויק, נסה להזין עיר ורחוב.")
 
-    st.caption("כלי השרטוט בצד שמאל של המפה מאפשרים לך לצייר: 📏 תוואי כבלים (Polyline), 🟦 אזורי עבודה (Polygon), ו-📍 מיקומי עמודים/ארונות.")
+    st.caption("כלי השרטוט בצד שמאל של המפה מאפשרים לך לצייר: 📏 תוואי כבלים (Polyline), 🟦 אזורי עבודה (Polygon), ו-📍 מיקומי עמודים/ארונות/פנסים.")
 
     m = folium.Map(location=st.session_state.map_center, zoom_start=19)
     folium.TileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google', name='Google Satellite').add_to(m)
@@ -99,11 +100,27 @@ with tab1:
     )
     draw.add_to(m)
 
-    map_data = st_folium(m, height=450, width="100%", key="junction_sketch_map")
+    map_data = st_folium(m, height=500, width="100%", key="junction_sketch_map")
 
-    # הצגת נתוני הסקיצה אם שורטטו
+    # הצגת נתוני הסקיצה והורדה
     if map_data and map_data.get("all_drawings"):
-        st.success(f"✏️ נשמרו {len(map_data['all_drawings'])} אלמנטים בסקיצה (קווים / סמנים בצומת)")
+        drawings_count = len(map_data["all_drawings"])
+        st.success(f"✏️ נשמרו {drawings_count} אלמנטים בסקיצה (קווים / סמנים בצומת)")
+
+    # יצירת מפה עצמאית בפורמט HTML להורדה
+    map_html_buffer = io.BytesIO()
+    m.save(map_html_buffer, close_file=False)
+
+    col_down1, col_down2 = st.columns(2)
+    with col_down1:
+        st.download_button(
+            label="🗺️ הורד סקיצת צומת מלאה (HTML / Google Maps)",
+            data=map_html_buffer.getvalue(),
+            file_name=f"Junction_Sketch_{junction_name.replace(' ', '_')}.html",
+            mime="text/html"
+        )
+    with col_down2:
+        st.caption("💡 את קובץ ה-HTML שירד ניתן לפתוח מכל דפדפן, לצפות בסקיצה או להדפיס ל-PDF.")
 
 # ---------------------------------------------------------
 # כרטיסייה 2: ספירת ציוד בשטח
@@ -192,9 +209,12 @@ with tab4:
 # ---------------------------------------------------------
 with tab5:
     st.subheader("📥 הפקת דוח Excel למנכ״ל")
+    
     def generate_excel_report():
         output = io.BytesIO()
         wb = openpyxl.Workbook()
+        
+        # ------------------- גיליון 1: כתב כמויות -------------------
         ws1 = wb.active
         ws1.title = "כתב כמויות וסיכום"
         ws1.views.sheetView[0].rightToLeft = True
@@ -236,12 +256,51 @@ with tab5:
             ws1.cell(row=row_num, column=4, value=f"=C{row_num}-B{row_num}")
             ws1.cell(row=row_num, column=5, value="")
 
+        # הוספת חישובי כבלים ל-Excel
+        cable_start_row = 17
+        ws1.cell(row=cable_start_row, column=1, value="סיכום כבלים מתוכנן").font = Font(bold=True, size=12)
+        ws1.cell(row=cable_start_row+1, column=1, value="כבל פיקוד רמזורים כבד")
+        ws1.cell(row=cable_start_row+1, column=2, value=f"{cable_heavy} מטר")
+        ws1.cell(row=cable_start_row+2, column=1, value="כבל פיקוד הולכי רגל")
+        ws1.cell(row=cable_start_row+2, column=2, value=f"{cable_light} מטר")
+        ws1.cell(row=cable_start_row+3, column=1, value="כבל הארקה תקני")
+        ws1.cell(row=cable_start_row+3, column=2, value=f"{cable_ground} מטר")
+
+        # ------------------- גיליון 2: נתוני סקיצה ותוואי -------------------
+        ws2 = wb.create_sheet(title="סקיצת תוואי ומיקומים")
+        ws2.views.sheetView[0].rightToLeft = True
+
+        ws2.merge_cells("A1:C1")
+        title_cell2 = ws2["A1"]
+        title_cell2.value = "נתוני שרטוט וסקיצה (GeoJSON / Coordinates)"
+        title_cell2.font = Font(name="Arial", size=14, bold=True, color="FFFFFF")
+        title_cell2.fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
+        title_cell2.alignment = Alignment(horizontal="center", vertical="center")
+
+        sketch_headers = ["מס' אלמנט", "סוג השרטוט", "קואורדינטות / נתונים"]
+        ws2.append([])
+        ws2.append(sketch_headers)
+
+        for col_num in range(1, 4):
+            cell = ws2.cell(row=3, column=col_num)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center")
+
+        if map_data and map_data.get("all_drawings"):
+            for idx, drawing in enumerate(map_data["all_drawings"], start=1):
+                geom_type = drawing.get("geometry", {}).get("type", "לא ידוע")
+                coords = str(drawing.get("geometry", {}).get("coordinates", []))
+                ws2.append([idx, geom_type, coords])
+        else:
+            ws2.append([1, "ללא שרטוט", "לא בוצע שרטוט על גבי המפה בצומת"])
+
         wb.save(output)
         return output.getvalue()
 
     excel_file = generate_excel_report()
     st.download_button(
-        label="📊 הורד דוח Excel הנדסי",
+        label="📊 הורד דוח Excel הנדסי (כולל נתוני סקיצה)",
         data=excel_file,
         file_name=f"Junction_Report_{junction_name.replace(' ', '_')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
