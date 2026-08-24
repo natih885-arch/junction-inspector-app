@@ -5,3 +5,4 @@ Pillow
 matplotlib
 folium
 streamlit-folium
+geopy
