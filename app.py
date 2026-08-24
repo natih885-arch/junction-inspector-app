@@ -6,7 +6,6 @@ import folium
 from streamlit_folium import st_folium
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import dataframe_to_rows
 
 # הגדרות עמוד ראשי
 st.set_page_config(
@@ -41,7 +40,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="main-title">🚦 מערכת פיקוח צמתים וכתב כמויות - רכבת קלה</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">תיעוד מהיר בשטח | בדיקות הארקה | סקיצת מפה | הפקת דוח Excel/PDF לעריכה</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">תיעוד מהיר בשטח | בדיקות הארקה | סקיצת מפה | הפקת דוח Excel לעריכה</div>', unsafe_allow_html=True)
 
 # כרטיסיות ראשיות באפליקציה
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -49,7 +48,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🔢 ספירת ציוד בשטח (לפני/אחרי)", 
     "⚡ אישור הארקה ובטיחות",
     "📊 כתב כמויות וחישוב כבלים",
-    "📥 הפקת דוח למנכ"ל (Excel)"
+    "📥 הפקת דוח למנכ״ל (Excel)"
 ])
 
 # ---------------------------------------------------------
@@ -75,7 +74,6 @@ with tab1:
     st.subheader("🗺️ איתור הצומת על גבי מפת גוגל / מפת לוויין")
     st.info("לחץ על המפה כדי לסמן את מיקום ארון הפיקוד / מרכז הצומת:")
 
-    # מיקום ברירת מחדל (תל אביב / מרכז)
     m = folium.Map(location=[32.0636, 34.7735], zoom_start=16)
     folium.TileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google', name='Google Satellite').add_to(m)
     
@@ -152,7 +150,6 @@ with tab3:
 with tab4:
     st.subheader("📊 כתב כמויות הנדסי אוטומטי (לפני vs אחרי)")
 
-    # יצירת טבלת הנתונים
     boq_data = [
         {"תיאור הרכיב": "עמודי מתכת (זרוע/ישר)", "לפני": poles_metal_before, "אחרי": poles_metal_after},
         {"תיאור הרכיב": "עמודי בטון", "לפני": poles_concrete_before, "אחרי": poles_concrete_after},
@@ -171,14 +168,13 @@ with tab4:
     st.subheader("🔌 חישוב מטראז' כבלים מנותח מאחורי הקלעים")
     st.caption("החישוב כולל: מרחק אופקי ממוצע (25מ') + עלייה אנכית בגובה העמוד (4מ') + רזרבות חיבורים בארון ובבסיס (3מ'):")
 
-    # נוסחת חישוב כבלים אוטומטית לפי תוספת רכיבים
     added_car_lights = max(0, car_lights_after - car_lights_before)
     added_ped_lights = max(0, ped_lights_after - ped_lights_before)
     added_blinkers = max(0, blinkers_after - blinkers_before)
 
-    cable_heavy = (added_car_lights * 32) + (added_blinkers * 20)  # כבל פיקוד מרכזי 16-24 גידים
-    cable_light = added_ped_lights * 22                            # כבל פיקוד משני 10 גידים
-    cable_ground = (poles_metal_after * 6) + 15                    # כבל הארקה צהוב-ירוק
+    cable_heavy = (added_car_lights * 32) + (added_blinkers * 20)
+    cable_light = added_ped_lights * 22
+    cable_ground = (poles_metal_after * 6) + 15
 
     m1, m2, m3 = st.columns(3)
     m1.metric("כבל פיקוד רמזורים כבד (16-24 גידים)", f"{cable_heavy} מטר", delta=f"+{cable_heavy} מ'")
@@ -190,18 +186,16 @@ with tab4:
 # ---------------------------------------------------------
 with tab5:
     st.subheader("📥 הפקת קובץ Excel מקיף ומעוצב ברמה הנדסית")
-    st.info("קובץ ה-Excel מיוצר עם נוסחאות עבודה פתוחות, כך שהמנכ"ל או מנהל הפרויקט יוכלו לערוך כמויות ומחירים מאוחר יותר במידת הצורך.")
+    st.info("קובץ ה-Excel מיוצר עם נוסחאות עבודה פתוחות, כך שהמנכ״ל או מנהל הפרויקט יוכלו לערוך כמויות ומחירים מאוחר יותר במידת הצורך.")
 
     def generate_excel_report():
         output = io.BytesIO()
         wb = openpyxl.Workbook()
         
-        # גיליון 1: סיכום וכתב כמויות
         ws1 = wb.active
         ws1.title = "כתב כמויות וסיכום"
         ws1.views.sheetView[0].rightToLeft = True
 
-        # עיצוב כותרת ראשית
         ws1.merge_cells("A1:E1")
         title_cell = ws1["A1"]
         title_cell.value = f"דוח פיקוח וכתב כמויות - {junction_name}"
@@ -209,7 +203,6 @@ with tab5:
         title_cell.fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
         title_cell.alignment = Alignment(horizontal="center", vertical="center")
 
-        # פרטי ניהול
         ws1["A3"] = "שם המפקח:"
         ws1["B3"] = inspector_name
         ws1["A4"] = "תאריך סיור:"
@@ -217,9 +210,8 @@ with tab5:
         ws1["A5"] = "שלב הסדר תנועה:"
         ws1["B5"] = project_phase
         ws1["A6"] = "סטטוס הארקה:"
-        ws1["B6"] = "מאושר ותקין ✅" if is_grounding_approved else "לא אושר ❌"
+        ws1["B6"] = "מאושר ותקין" if is_grounding_approved else "לא אושר"
 
-        # כותרות טבלה
         headers = ["תיאור הרכיב / ציוד", "כמות לפני (מצב קיים)", "כמות אחרי (מתוכנן)", "שינוי (דלתא Δ)", "הערות פיקוח"]
         ws1.append([])
         ws1.append(headers)
@@ -233,17 +225,14 @@ with tab5:
             cell.font = header_font
             cell.alignment = Alignment(horizontal="center")
 
-        # הכנסת נתוני כתב הכמויות
         for r_idx, row in df_boq.iterrows():
             row_num = 9 + r_idx
             ws1.cell(row=row_num, column=1, value=row["תיאור הרכיב"])
             ws1.cell(row=row_num, column=2, value=row["לפני"])
             ws1.cell(row=row_num, column=3, value=row["אחרי"])
-            # נוסחת Excel פתוחה לעריכה למנכ"ל!
             ws1.cell(row=row_num, column=4, value=f"=C{row_num}-B{row_num}")
             ws1.cell(row=row_num, column=5, value="")
 
-        # סיכום כבלים
         ws1.append([])
         ws1.append(["אומדן כבלים מחושב", "מטראז' (מטר)", "סוג כבל", "סוג התקנה"])
         cb_row = ws1.max_row
@@ -255,7 +244,6 @@ with tab5:
         ws1.append(["כבל פיקוד הולכי רגל", cable_light, "10 גידים", cabling_mode])
         ws1.append(["כבל הארקה תקני", cable_ground, "1x16 צהוב-ירוק", "תחתי/עמודים"])
 
-        # כיוונון רוחב עמודות
         for col in ws1.columns:
             max_len = max(len(str(cell.value or '')) for cell in col)
             col_letter = openpyxl.utils.get_column_letter(col[0].column)
@@ -266,7 +254,7 @@ with tab5:
 
     excel_file = generate_excel_report()
     st.download_button(
-        label="📊 הורד דוח Excel הנדסי פתוח לעריכה (עבור המנכ"ל)",
+        label="📊 הורד דוח Excel הנדסי פתוח לעריכה עבור המנכ״ל",
         data=excel_file,
         file_name=f"Junction_Report_{junction_name.replace(' ', '_')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
