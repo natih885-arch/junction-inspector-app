@@ -21,8 +21,9 @@ st.markdown("""
     .main-title { font-size: 32px; font-weight: bold; color: #1E3A8A; text-align: right; margin-bottom: 5px; }
     .sub-title { font-size: 18px; color: #4B5563; text-align: right; margin-bottom: 20px; }
     .stButton>button { width: 100%; background-color: #1E3A8A; color: white; font-weight: bold; }
+    .footer { text-align: center; margin-top: 40px; padding: 15px; border-top: 1px solid #E5E7EB; color: #6B7280; font-size: 14px; }
     </style>
-""", unsafe_unsafe_html=True if hasattr(st, 'unsafe_html') else True)
+""", unsafe_allow_html=True)
 
 st.markdown('<div class="main-title">🚦 מערכת פיקוח צמתים וכתב כמויות - רכבת קלה</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">תיעוד מהיר בשטח | סקיצת מפה ושרטוט תוואי | אישור הארקה | הפקת דוח Excel</div>', unsafe_allow_html=True)
@@ -245,3 +246,11 @@ with tab5:
         file_name=f"Junction_Report_{junction_name.replace(' ', '_')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+# ---------------------------------------------------------
+# פוטר זכויות יוצרים
+# ---------------------------------------------------------
+st.markdown(
+    '<div class="footer">© כל הזכויות שמורות לנתנאל הררי | 📞 0545520445</div>',
+    unsafe_allow_html=True
+)
