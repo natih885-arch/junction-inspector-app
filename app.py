@@ -4,7 +4,6 @@ import io
 import requests
 from PIL import Image
 import folium
-from folium.plugins import Draw
 from streamlit_folium import st_folium
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -59,37 +58,67 @@ with tab1:
         general_notes = st.text_area("הערות כלליות/מיקום צומת", "תוואי כבילה מתוכנן מצד מזרח למערב כולל מעבר ארון פיקוד")
 
     st.divider()
-    st.subheader("🗺️ שליפת תצלום מפה אוטומטי מ-Google Maps / מיקום")
-    
+    st.subheader("🗺️ איתור ובחירת נקודת הצומת על גבי המפה")
+    st.caption("חפש כתובת או לחץ ישירות על גבי המפה כדי לסמן את הנקודה המדויקת של הצומת:")
+
+    # מיקום ברירת מחדל (תל אביב - אלנבי / מנחם בגין)
+    if "map_lat" not in st.session_state:
+        st.session_state["map_lat"] = 32.06050
+        st.session_state["map_lon"] = 34.77537
+
     col_map_in1, col_map_in2 = st.columns([3, 1])
     with col_map_in1:
-        map_search_query = st.text_input("הכנס כתובת/מיקום לשליפת תצלום מפה:", value=junction_name)
+        map_search_query = st.text_input("חיפוש כתובת / צומת:", value=junction_name)
     with col_map_in2:
-        zoom_val = st.slider("רמת זום:", 15, 19, 17)
-
-    if st.button("🔍 טען תצלום מפה של הצומת"):
-        with st.spinner("מאתר מיקום ושולף מפה..."):
+        if st.button("🔍 חפש כתובת"):
             try:
-                geolocator = Nominatim(user_agent="traffic_inspector_app_v2")
+                geolocator = Nominatim(user_agent="traffic_inspector_app_v3")
                 location = geolocator.geocode(map_search_query)
-                
                 if location:
-                    lat, lon = location.latitude, location.longitude
-                    st.success(f"נמצא מיקום: {location.address} ({lat:.5f}, {lon:.5f})")
-                    
-                    # מנגנון שליפת מפה מוגן ויציב (Geoapify / OpenStreetMap Static)
-                    static_url = f"https://maps.geoapify.com/v1/staticmap?style=osm-carto&width=800&height=450&center=lonlat:{lon},{lat}&zoom={zoom_val}&apiKey=568e09e1d88242cfbe72579dfd2d3a04"
-                    
-                    # גיבוי - שרת Esri ArcGIS לווייני (במידה ונדרש תצלום אוויר)
-                    res = requests.get(static_url, timeout=5)
-                    if res.status_code == 200:
-                        st.session_state["fetched_bg_map"] = Image.open(io.BytesIO(res.content))
-                    else:
-                        st.error("לא ניתן היה למשוך תצלום מפה, אנה העלה תמונה ידנית.")
+                    st.session_state["map_lat"] = location.latitude
+                    st.session_state["map_lon"] = location.longitude
+                    st.success(f"נמצא: {location.address}")
                 else:
-                    st.error("הכתובת לא נמצאה. בדוק את האיות או נסה כתובת כללית יותר.")
+                    st.error("הכתובת לא נמצאה, לחץ ידנית על המפה לבחירת מיקום.")
             except Exception as e:
-                st.error(f"שגיאה בתקשורת מול שרת המפות: {e}")
+                st.error(f"שגיאת איתור: {e}")
+
+    # הצגת מפה אינטראקטיבית לבחירת נקודה
+    m = folium.Map(
+        location=[st.session_state["map_lat"], st.session_state["map_lon"]], 
+        zoom_start=17,
+        tiles="OpenStreetMap"
+    )
+    folium.Marker(
+        [st.session_state["map_lat"], st.session_state["map_lon"]],
+        popup="מיקום הצומת הנבחר",
+        tooltip="מיקום הצומת"
+    ).add_to(m)
+
+    map_data = st_folium(m, height=350, width=800, key="interactive_folium_map")
+
+    # עדכון מיקום לפי לחיצת עכבר על המפה
+    if map_data and map_data.get("last_clicked"):
+        st.session_state["map_lat"] = map_data["last_clicked"]["lat"]
+        st.session_state["map_lon"] = map_data["last_clicked"]["lng"]
+
+    col_btn_fetch, _ = st.columns([2, 2])
+    with col_btn_fetch:
+        if st.button("🖼️ טען את מפת המיקום הנבחר ללוח השרטוט"):
+            with st.spinner("מכין תמונה מתוך המפה..."):
+                lat, lon = st.session_state["map_lat"], st.session_state["map_lon"]
+                # שליפה מאובטחת דרך שרת מפות חופשי של OpenStreetMap
+                tile_url = f"https://tile.openstreetmap.org/17/{int((lon + 180) / 360 * (1 << 17))}/{int((1 - pd.np.log(pd.np.tan(pd.np.radians(lat)) + 1 / pd.np.cos(pd.np.radians(lat))) / pd.np.pi) / 2 * (1 << 17))}.png"
+                headers = {'User-Agent': 'Mozilla/5.0'}
+                try:
+                    res = requests.get(tile_url, headers=headers, timeout=5)
+                    if res.status_code == 200:
+                        st.session_state["fetched_bg_map"] = Image.open(io.BytesIO(res.content)).resize((800, 450))
+                        st.success("תמונת המפה נטענה בהצלחה ללוח השרטוט למטה!")
+                    else:
+                        st.warning("לא ניתן להוריד מפה אוטומטית. ניתן להעלות תמונת מסך/תצלום אוויר בטופס למטה.")
+                except Exception as e:
+                    st.warning(f"שגיאת תקשורת קלה. מומלץ להעלות תמונה ידנית: {e}")
 
     st.divider()
     st.subheader("📐 לוח שרטוט וסקיצה הנדסית לצומת")
