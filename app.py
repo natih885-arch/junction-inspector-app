@@ -1,97 +1,106 @@
 import streamlit as st
 import pandas as pd
 import io
+import requests
 from PIL import Image
-import folium
-from folium.plugins import Draw
-from streamlit_folium import st_folium
 import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.drawing.image import Image as OpenpyxlImage
 from geopy.geocoders import Nominatim
 from streamlit_drawable_canvas import st_canvas
 
-# הגדרות עמוד ראשי
+# הגדרות עמוד
 st.set_page_config(
     page_title="מערכת פיקוח צמתים - רכבת קלה",
     page_icon="🚦",
     layout="wide"
 )
 
-st.markdown("""
-    <style>
-    .main-title { font-size: 32px; font-weight: bold; color: #1E3A8A; text-align: right; margin-bottom: 5px; }
-    .sub-title { font-size: 18px; color: #4B5563; text-align: right; margin-bottom: 20px; }
-    .stButton>button { width: 100%; background-color: #1E3A8A; color: white; font-weight: bold; }
-    .footer { text-align: center; margin-top: 40px; padding: 15px; border-top: 1px solid #E5E7EB; color: #6B7280; font-size: 14px; }
-    </style>
-""", unsafe_allow_html=True)
+st.title("🚦 מערכת פיקוח צמתים - תצלום אוויר ושרטוט תוואי")
 
-st.markdown('<div class="main-title">🚦 מערכת פיקוח צמתים וכתב כמויות - רכבת קלה</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">תיעוד מהיר בשטח | סקיצת מפה ושרטוט תוואי | אישור הארקה | הפקת דוח Excel</div>', unsafe_allow_html=True)
-
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🎨 סקיצת צומת ומפה", 
-    "🔢 ספירת ציוד בשטח", 
-    "⚡ אישור הארקה ובטיחות",
-    "📊 כתב כמויות וחישוב כבלים",
-    "📥 הפקת דוח למנכ״ל (Excel)"
+tab1, tab2, tab3 = st.tabs([
+    "🗺️ מפה ושרטוט תוואי צומת", 
+    "🔢 כתב כמויות וכבלים",
+    "📥 הפקת דוח Excel למנכ״ל"
 ])
 
 # ---------------------------------------------------------
-# כרטיסייה 1: סקיצת צומת ושרטוט ויזואלי
+# כרטיסייה 1: מאתר מיקום + תצלום אוויר + לוח שרטוט
 # ---------------------------------------------------------
 with tab1:
-    st.subheader("📌 פרטי הפיקוח ומיקום")
-    col_a, col_b = st.columns(2)
-    with col_a:
-        junction_name = st.text_input("שם / מספר הצומת", "אלנבי מנחם בגין תל אביב")
-        inspector_name = st.text_input("שם המפקח בשטח", "נתנאל הררי")
-        project_phase = st.selectbox("שלב הסדר התנועה", [
-            "שלב א' - מצב קיים (לפני שינוי)",
-            "שלב ב' - הסדר זמני (כבילה עילית)",
-            "שלב ג' - הסדר קבוע (כבילה תחתית / סופי)"
-        ])
-    with col_b:
-        inspection_date = st.date_input("תאריך סיור הפיקוח")
-        cabling_mode = st.radio("סוג כבילה מרכזי בתוואי", ["כבילה תחתית (שרוולים/שוקיות באדמה)", "כבילה עילית (זמנית על מתוחים)"])
-        general_notes = st.text_area("הערות כלליות/מיקום צומת", "תוואי כבילה מתוכנן מצד מזרח למערב כולל מעבר ארון פיקוד")
+    st.subheader("📌 איתור צומת וטעינת תצלום אוויר")
+    
+    col_input1, col_input2 = st.columns([3, 1])
+    with col_input1:
+        address_query = st.text_input("הכנס כתובת / צומת לחיפוש בגוגל מפס:", "אלנבי מנחם בגין תל אביב")
+    with col_input2:
+        zoom_level = st.slider("רמת זום (Zoom):", 15, 19, 17)
+
+    # מנגנון המרת כתובת לתצלום אוויר/מפה
+    bg_image = None
+    if st.button("🔍 טען תצלום אוויר של הצומת"):
+        with st.spinner("שולף תצלום מפה..."):
+            try:
+                geolocator = Nominatim(user_agent="traffic_junction_app")
+                location = geolocator.geocode(address_query)
+                
+                if location:
+                    lat, lon = location.latitude, location.longitude
+                    st.success(f"נמצאה כתובת: {location.address} ({lat:.5f}, {lon:.5f})")
+                    
+                    # שליפת אריח מפה/לוויין משרת מפות (OpenStreetMap/Esri Satellite)
+                    # טעינת תצלום אוויר באמצעות Esri World Imagery (חינמי וללא API Key)
+                    map_url = f"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{zoom_level}/{int((1 - float(location.latitude)) / 180 * 2**zoom_level)}/{int((lon + 180) / 360 * 2**zoom_level)}"
+                    
+                    # חלופה יציבה לשליפת תצלום לוויין בפורמט Static Map:
+                    static_map_url = f"https://static-map.openstreetmap.fr/staticmap.php?center={lat},{lon}&zoom={zoom_level}&size=800x450&maptype=mapnik"
+                    
+                    response = requests.get(static_map_url)
+                    if response.status_code == 200:
+                        bg_image = Image.open(io.BytesIO(response.content))
+                        st.session_state["loaded_bg_image"] = bg_image
+                else:
+                    st.error("הכתובת לא נמצאה, אנה נסה לחפש שנית או להעלות קובץ תמונה ידנית.")
+            except Exception as e:
+                st.error(f"שגיאה בשליפת המפה: {e}")
+
+    # בדיקה אם קיימת תמונה טעונה ב-Session State
+    if "loaded_bg_image" in st.session_state:
+        bg_image = st.session_state["loaded_bg_image"]
 
     st.divider()
-    st.subheader("📐 לוח שרטוט וסקיצה הנדסית לצומת")
-    st.caption("שרטט את תוואי הכבלים, העמודים והפנסים. השרטוט החזותי שייווצר פה יוטמע כתמונה מלאה בתוך קובץ ה-Excel.")
-
-    col_tool1, col_tool2, col_tool3 = st.columns(3)
-    with col_tool1:
+    st.subheader("📐 לוח שרטוט, הוספה והזזת אלמנטים ע״ג הצומת")
+    
+    col_t1, col_t2, col_t3, col_t4 = st.columns(4)
+    with col_t1:
         drawing_mode = st.selectbox(
             "כלי שרטוט:",
-            ("freedraw", "line", "rect", "circle", "transform"),
+            ("freedraw", "circle", "rect", "line", "transform"),
             format_func=lambda x: {
-                "freedraw": "✏️ ציור חופשי (תוואי כבלים)",
+                "freedraw": "✏️ תוואי כבלים (ציור חופשי)",
+                "circle": "🟢 פנס / עמוד (עיגול)",
+                "rect": "🟦 ארון פיקוד / גומחה",
                 "line": "📏 קו ישר",
-                "rect": "🟦 מלבן / ארון פיקוד",
-                "circle": "🟢 עיגול / עמוד / פנס",
-                "transform": "🖐️ הזזה ועריכת אלמנטים"
+                "transform": "🖐️ הזזה ושיונוי גודל אלמנטים"
             }.get(x, x)
         )
-    with col_tool2:
-        stroke_color = st.color_picker("צבע התוואי/האלמנט:", "#FF0000")
-    with col_tool3:
-        stroke_width = st.slider("עובי הקו:", 1, 15, 3)
+    with col_t2:
+        stroke_color = st.color_picker("צבע אלמנט/תוואי:", "#FF0000")
+    with col_t3:
+        stroke_width = st.slider("עובי קו:", 1, 12, 4)
+    with col_t4:
+        st.write("")
+        st.write("")
+        if st.button("🗑️ נקה שרטוט"):
+            st.session_state["canvas_junction_sketch"] = None
 
-    bg_image_file = st.file_uploader("📷 העלה תמונת רקע / תצלום אוויר לצומת (אופציונלי):", type=["png", "jpg", "jpeg"])
-    
-    bg_img = None
-    if bg_image_file:
-        bg_img = Image.open(bg_image_file)
-
-    # לוח השרטוט הגרפי
+    # לוח השרטוט שיושב ע"ג התצלום הטעון
     canvas_result = st_canvas(
-        fill_color="rgba(255, 165, 0, 0.3)",
+        fill_color="rgba(255, 230, 0, 0.4)",
         stroke_width=stroke_width,
         stroke_color=stroke_color,
-        background_color="#F3F4F6" if bg_img is None else None,
-        background_image=bg_img,
+        background_color="#E5E7EB" if bg_image is None else None,
+        background_image=bg_image,
         height=450,
         width=800,
         drawing_mode=drawing_mode,
@@ -99,169 +108,48 @@ with tab1:
     )
 
     if canvas_result.image_data is not None:
-        st.session_state["canvas_sketch_image"] = canvas_result.image_data
+        st.session_state["final_sketch_matrix"] = canvas_result.image_data
 
 # ---------------------------------------------------------
-# כרטיסייה 2: ספירת ציוד בשטח
+# כרטיסייה 2: כתב כמויות
 # ---------------------------------------------------------
 with tab2:
-    st.subheader("🔢 תיעוד ציוד בצומת")
-    col1, col2, col3 = st.columns(3)
+    st.subheader("🔢 רישום כמויות ציוד וכבלים")
+    col1, col2 = st.columns(2)
     with col1:
-        st.markdown("### 🏛️ עמודים ותשתיות")
-        poles_metal_before = st.number_input("עמודי מתכת (לפני)", min_value=0, value=4)
-        poles_metal_after = st.number_input("עמודי מתכת (אחרי)", min_value=0, value=6)
-        poles_concrete_before = st.number_input("עמודי בטון (לפני)", min_value=0, value=2)
-        poles_concrete_after = st.number_input("עמודי בטון (אחרי)", min_value=0, value=0)
-
+        poles_num = st.number_input("כמות עמודי תאורה/רמזור:", value=6)
+        car_lights = st.number_input("כמות פנסי רכב:", value=8)
     with col2:
-        st.markdown("### 🚥 פנסי תנועה")
-        car_lights_before = st.number_input("פנסי רכב (לפני)", min_value=0, value=6)
-        car_lights_after = st.number_input("פנסי רכב (אחרי)", min_value=0, value=8)
-        ped_lights_before = st.number_input("פנסי הולכי רגל (לפני)", min_value=0, value=4)
-        ped_lights_after = st.number_input("פנסי הולכי רגל (אחרי)", min_value=0, value=6)
-
-    with col3:
-        st.markdown("### 🚲 בלינקרים ואופניים")
-        blinkers_before = st.number_input("בלינקרים / מהבהבים (לפני)", min_value=0, value=1)
-        blinkers_after = st.number_input("בלינקרים / מהבהבים (אחרי)", min_value=0, value=3)
-        bike_lights_before = st.number_input("פנסי אופניים (לפני)", min_value=0, value=0)
-        bike_lights_after = st.number_input("פנסי אופניים (אחרי)", min_value=0, value=2)
+        ped_lights = st.number_input("כמות פנסי הולכי רגל:", value=4)
+        cables_meters = st.number_input("אורך כבלים כולל (מטרים):", value=180)
 
 # ---------------------------------------------------------
-# כרטיסייה 3: אישור הארקה
+# כרטיסייה 3: הפקת Excel עם תצלום המפה והשרטוט
 # ---------------------------------------------------------
 with tab3:
-    st.subheader("⚡ צ'קליסט אישור הארקה ובטיחות")
-    col_g1, col_g2 = st.columns(2)
-    with col_g1:
-        g_poles = st.checkbox("✅ בוצעה בדיקת חיבור הארקה לכל עמודי הצומת", value=True)
-        g_cabinet = st.checkbox("✅ הארקת ארון פיקוד מרכזי מחוברת ותקינה", value=True)
-        g_continuity = st.checkbox("✅ בוצעה בדיקת רציפות הארקה (Continuity Test)", value=True)
-        g_value = st.number_input("ערך הארקה שנמדד (אוהם Ω)", min_value=0.0, value=1.2, step=0.1)
+    st.subheader("📥 הפקת דוח Excel להדפסה / למנכ״ל")
 
-    with col_g2:
-        grounding_img = st.file_uploader("📷 צילום פתח עמוד / פס הארקה", type=["jpg", "png", "jpeg"])
-        if grounding_img:
-            image = Image.open(grounding_img)
-            st.image(image, caption="תמונת הארקה מהשטח", width=300)
-
-    is_grounding_approved = g_poles and g_cabinet and g_continuity
-    if is_grounding_approved:
-        st.success("🛡️ סטטוס בטיחות: הארקת הצומת מאושרת ותקינה!")
-    else:
-        st.error("❌ אזהרה: טרם הושלמו כל בדיקות ההארקה הנדרשות!")
-
-# ---------------------------------------------------------
-# כרטיסייה 4: כתב כמויות
-# ---------------------------------------------------------
-with tab4:
-    st.subheader("📊 כתב כמויות הנדסי (לפני vs אחרי)")
-    boq_data = [
-        {"תיאור הרכיב": "עמודי מתכת (זרוע/ישר)", "לפני": poles_metal_before, "אחרי": poles_metal_after},
-        {"תיאור הרכיב": "עמודי בטון", "לפני": poles_concrete_before, "אחרי": poles_concrete_after},
-        {"תיאור הרכיב": "פנסי תנועה לרכב", "לפני": car_lights_before, "אחרי": car_lights_after},
-        {"תיאור הרכיב": "פנסי הולכי רגל", "לפני": ped_lights_before, "אחרי": ped_lights_after},
-        {"תיאור הרכיב": "בלינקרים / מהבהבים", "לפני": blinkers_before, "אחרי": blinkers_after},
-        {"תיאור הרכיב": "פנסי אופניים", "לפני": bike_lights_before, "אחרי": bike_lights_after},
-    ]
-    df_boq = pd.DataFrame(boq_data)
-    df_boq["שינוי (דלתא Δ)"] = df_boq["אחרי"] - df_boq["לפני"]
-    st.dataframe(df_boq, use_container_width=True)
-
-    added_car_lights = max(0, car_lights_after - car_lights_before)
-    added_ped_lights = max(0, ped_lights_after - ped_lights_before)
-    added_blinkers = max(0, blinkers_after - blinkers_before)
-
-    cable_heavy = (added_car_lights * 32) + (added_blinkers * 20)
-    cable_light = added_ped_lights * 22
-    cable_ground = (poles_metal_after * 6) + 15
-
-    st.divider()
-    m1, m2, m3 = st.columns(3)
-    m1.metric("כבל פיקוד רמזורים כבד", f"{cable_heavy} מטר")
-    m2.metric("כבל פיקוד הולכי רגל", f"{cable_light} מטר")
-    m3.metric("כבל הארקה תקני", f"{cable_ground} מטר")
-
-# ---------------------------------------------------------
-# כרטיסייה 5: הפקת דוח Excel עם סקיצה ויזואלית מובנית
-# ---------------------------------------------------------
-with tab5:
-    st.subheader("📥 הפקת דוח Excel למנכ״ל")
-    
-    def generate_excel_report():
+    def create_excel():
         output = io.BytesIO()
         wb = openpyxl.Workbook()
         
-        # ------------------- גיליון 1: כתב כמויות -------------------
+        # גיליון 1: סקיצה ותצלום אוויר
         ws1 = wb.active
-        ws1.title = "כתב כמויות וסיכום"
+        ws1.title = "סקיצת תוואי צומת"
         ws1.views.sheetView[0].rightToLeft = True
-
-        ws1.merge_cells("A1:E1")
+        
+        ws1.merge_cells("A1:F1")
         title_cell = ws1["A1"]
-        title_cell.value = f"דוח פיקוח וכתב כמויות - {junction_name}"
-        title_cell.font = Font(name="Arial", size=16, bold=True, color="FFFFFF")
+        title_cell.value = f"תצלום אוויר וסקיצת תוואי צומת - {address_query}"
+        title_cell.font = Font(name="Arial", size=14, bold=True, color="FFFFFF")
         title_cell.fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
         title_cell.alignment = Alignment(horizontal="center", vertical="center")
 
-        ws1["A3"] = "שם המפקח:"
-        ws1["B3"] = inspector_name
-        ws1["A4"] = "תאריך סיור:"
-        ws1["B4"] = str(inspection_date)
-        ws1["A5"] = "שלב הסדר תנועה:"
-        ws1["B5"] = project_phase
-        ws1["A6"] = "סטטוס הארקה:"
-        ws1["B6"] = "מאושר ותקין" if is_grounding_approved else "לא אושר"
-
-        headers = ["תיאור הרכיב / ציוד", "כמות לפני", "כמות אחרי", "שינוי (דלתא Δ)", "הערות"]
-        ws1.append([])
-        ws1.append(headers)
-
-        header_fill = PatternFill(start_color="3B82F6", end_color="3B82F6", fill_type="solid")
-        header_font = Font(name="Arial", size=11, bold=True, color="FFFFFF")
-
-        for col_num in range(1, 6):
-            cell = ws1.cell(row=8, column=col_num)
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal="center")
-
-        for r_idx, row in df_boq.iterrows():
-            row_num = 9 + r_idx
-            ws1.cell(row=row_num, column=1, value=row["תיאור הרכיב"])
-            ws1.cell(row=row_num, column=2, value=row["לפני"])
-            ws1.cell(row=row_num, column=3, value=row["אחרי"])
-            ws1.cell(row=row_num, column=4, value=f"=C{row_num}-B{row_num}")
-            ws1.cell(row=row_num, column=5, value="")
-
-        # הוספת חישובי כבלים ל-Excel
-        cable_start_row = 17
-        ws1.cell(row=cable_start_row, column=1, value="סיכום כבלים מתוכנן").font = Font(bold=True, size=12)
-        ws1.cell(row=cable_start_row+1, column=1, value="כבל פיקוד רמזורים כבד")
-        ws1.cell(row=cable_start_row+1, column=2, value=f"{cable_heavy} מטר")
-        ws1.cell(row=cable_start_row+2, column=1, value="כבל פיקוד הולכי רגל")
-        ws1.cell(row=cable_start_row+2, column=2, value=f"{cable_light} מטר")
-        ws1.cell(row=cable_start_row+3, column=1, value="כבל הארקה תקני")
-        ws1.cell(row=cable_start_row+3, column=2, value=f"{cable_ground} מטר")
-
-        # ------------------- גיליון 2: סקיצה הנדסית ויזואלית -------------------
-        ws2 = wb.create_sheet(title="סקיצת תוואי ומיקומים")
-        ws2.views.sheetView[0].rightToLeft = True
-
-        ws2.merge_cells("A1:G1")
-        title_cell2 = ws2["A1"]
-        title_cell2.value = f"תרשים סקיצת צומת ותוואי שטח - {junction_name}"
-        title_cell2.font = Font(name="Arial", size=14, bold=True, color="FFFFFF")
-        title_cell2.fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
-        title_cell2.alignment = Alignment(horizontal="center", vertical="center")
-
-        # הזרקת תמונת הסקיצה הויזואלית לגיליון Excel
-        if "canvas_sketch_image" in st.session_state and st.session_state["canvas_sketch_image"] is not None:
-            img_data = st.session_state["canvas_sketch_image"]
+        # שמירת תמונת הלוח והטמעתה ב-Excel
+        if "final_sketch_matrix" in st.session_state and st.session_state["final_sketch_matrix"] is not None:
+            img_data = st.session_state["final_sketch_matrix"]
             img = Image.fromarray(img_data.astype('uint8'), 'RGBA')
             
-            # המרת התמונה ל-RGB לצורך שמירה ב-Excel
             bg = Image.new("RGB", img.size, (255, 255, 255))
             bg.paste(img, mask=img.split()[3])
             
@@ -272,25 +160,25 @@ with tab5:
             excel_img = OpenpyxlImage(img_byte_arr)
             excel_img.width = 650
             excel_img.height = 360
-            ws2.add_image(excel_img, "B3")
-        else:
-            ws2.cell(row=4, column=2, value="לא בוצע שרטוט ויזואלי על גבי הלוח.").font = Font(bold=True, color="FF0000")
+            ws2_img_cell = "B3"
+            ws1.add_image(excel_img, ws2_img_cell)
+
+        # גיליון 2: כתב כמויות
+        ws2 = wb.create_sheet(title="כתב כמויות")
+        ws2.views.sheetView[0].rightToLeft = True
+        ws2.append(["תיאור רכיב", "כמות"])
+        ws2.append(["עמודי תאורה/רמזור", poles_num])
+        ws2.append(["פנסי רכב", car_lights])
+        ws2.append(["פנסי הולכי רגל", ped_lights])
+        ws2.append(["אורך כבלים (מטר)", cables_meters])
 
         wb.save(output)
         return output.getvalue()
 
-    excel_file = generate_excel_report()
+    excel_data = create_excel()
     st.download_button(
-        label="📊 הורד דוח Excel הנדסי (כולל תרשים סקיצה חזותי)",
-        data=excel_file,
-        file_name=f"Junction_Report_{junction_name.replace(' ', '_')}.xlsx",
+        label="📊 הורד דוח Excel (כולל תצלום הלוויין והסקיצה)",
+        data=excel_data,
+        file_name="Junction_Sketch_Report.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
-# ---------------------------------------------------------
-# פוטר זכויות יוצרים
-# ---------------------------------------------------------
-st.markdown(
-    '<div class="footer">© כל הזכויות שמורות לנתנאל הררי | 📞 0545520445</div>',
-    unsafe_allow_html=True
-)
