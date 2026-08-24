@@ -6,6 +6,7 @@ import folium
 from streamlit_folium import st_folium
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from geopy.geocoders import Nominatim
 
 # הגדרות עמוד ראשי
 st.set_page_config(
@@ -58,7 +59,7 @@ with tab1:
     st.subheader("📌 פרטי הפיקוח והמיקום")
     col_a, col_b = st.columns(2)
     with col_a:
-        junction_name = st.text_input("שם / מספר הצומת", "צומת 102 - אלנבי / מנחם בגין")
+        junction_name = st.text_input("שם / מספר הצומת", "אלנבי מנחם בגין תל אביב")
         inspector_name = st.text_input("שם המפקח בשטח", "נתנאל הררי")
         project_phase = st.selectbox("שלב הסדר התנועה", [
             "שלב א' - מצב קיים (לפני שינוי)",
@@ -72,17 +73,44 @@ with tab1:
 
     st.divider()
     st.subheader("🗺️ איתור הצומת על גבי מפת גוגל / מפת לוויין")
-    st.info("לחץ על המפה כדי לסמן את מיקום ארון הפיקוד / מרכז הצומת:")
-
-    m = folium.Map(location=[32.0636, 34.7735], zoom_start=16)
-    folium.TileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google', name='Google Satellite').add_to(m)
     
-    map_data = st_folium(m, height=350, width="100%")
+    # מנגנון חיפוש כתובת / צומת
+    col_search1, col_search2 = st.columns([3, 1])
+    with col_search1:
+        search_query = st.text_input("הזן שם רחוב/צומת/עיר לחיפוש מהיר במפה:", value=junction_name)
+    with col_search2:
+        st.write("") # מרווח לעיצוב
+        st.write("")
+        search_btn = st.button("🔍 חפש בצומת")
+
+    # קואורדינטות ברירת מחדל (תל אביב)
+    if "map_center" not in st.session_state:
+        st.session_state.map_center = [32.0636, 34.7735]
+
+    if search_btn and search_query:
+        try:
+            geolocator = Nominatim(user_agent="junction_inspector_app")
+            location = geolocator.geocode(search_query + ", ישראל")
+            if location:
+                st.session_state.map_center = [location.latitude, location.longitude]
+                st.success(f"📍 נמצא המיקום: {location.address}")
+            else:
+                st.warning("⚠️ המיקום לא נמצא. נסה להזין שם רחוב ועיר באופן מפורט יותר.")
+        except Exception as e:
+            st.error("ארעה שגיאה בחיפוש המיקום, אנא נסה שוב.")
+
+    st.caption("לחץ על המפה כדי לסמן מדויק את מיקום ארון הפיקוד / מרכז הצומת:")
+
+    m = folium.Map(location=st.session_state.map_center, zoom_start=18)
+    folium.TileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google', name='Google Satellite').add_to(m)
+    folium.Marker(st.session_state.map_center, popup=junction_name, tooltip="מרכז החיפוש").add_to(m)
+    
+    map_data = st_folium(m, height=380, width="100%", key="junction_map")
     
     if map_data and map_data.get("last_clicked"):
         lat = map_data["last_clicked"]["lat"]
         lng = map_data["last_clicked"]["lng"]
-        st.success(f"📍 קואורדינטות נבחרו: {lat:.5f}, {lng:.5f}")
+        st.success(f"📍 קואורדינטות נבחרו בלחיצה: {lat:.5f}, {lng:.5f}")
 
 # ---------------------------------------------------------
 # כרטיסייה 2: ספירת ציוד בשטח (פשוט ומהיר למפקח)
