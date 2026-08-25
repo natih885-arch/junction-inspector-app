@@ -3,12 +3,11 @@ import pandas as pd
 import io
 import math
 import requests
-import base64
 from PIL import Image
 import folium
 from streamlit_folium import st_folium
 import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.drawing.image import Image as OpenpyxlImage
 from geopy.geocoders import Nominatim
 from streamlit_drawable_canvas import st_canvas
@@ -73,7 +72,7 @@ with tab1:
     with col_map_in2:
         if st.button("🔍 חפש כתובת"):
             try:
-                geolocator = Nominatim(user_agent="traffic_inspector_app_v4")
+                geolocator = Nominatim(user_agent="traffic_inspector_app_v5")
                 location = geolocator.geocode(map_search_query)
                 if location:
                     st.session_state["map_lat"] = location.latitude
@@ -84,10 +83,12 @@ with tab1:
             except Exception as e:
                 st.error(f"שגיאת איתור: {e}")
 
+    # מפת תצלום לוויין / אוויר מובנית ב-Folium
     m = folium.Map(
         location=[st.session_state["map_lat"], st.session_state["map_lon"]], 
-        zoom_start=17,
-        tiles="OpenStreetMap"
+        zoom_start=18,
+        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attr="Esri Satellite"
     )
     folium.Marker(
         [st.session_state["map_lat"], st.session_state["map_lon"]],
@@ -95,7 +96,7 @@ with tab1:
         tooltip="מיקום הצומת"
     ).add_to(m)
 
-    map_data = st_folium(m, height=350, width=800, key="interactive_folium_map")
+    map_data = st_folium(m, height=380, width=800, key="interactive_folium_map")
 
     if map_data and map_data.get("last_clicked"):
         st.session_state["map_lat"] = map_data["last_clicked"]["lat"]
@@ -103,31 +104,32 @@ with tab1:
 
     col_btn_fetch, _ = st.columns([2, 2])
     with col_btn_fetch:
-        if st.button("🖼️ טען את מפת המיקום הנבחר ללוח השרטוט"):
-            with st.spinner("מכין תמונה מתוך המפה..."):
+        if st.button("🛰️ טען תצלום אוויר ללוח השרטוט"):
+            with st.spinner("מוריד תצלום אוויר ברזולוציה גבוהה..."):
                 lat, lon = st.session_state["map_lat"], st.session_state["map_lon"]
-                zoom = 17
+                zoom = 18
                 
                 n = 2.0 ** zoom
                 xtile = int((lon + 180.0) / 360.0 * n)
                 ytile = int((1.0 - math.log(math.tan(math.radians(lat)) + (1.0 / math.cos(math.radians(lat)))) / math.pi) / 2.0 * n)
                 
-                tile_url = f"https://tile.openstreetmap.org/{zoom}/{xtile}/{ytile}.png"
-                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                # הורדת תצלום אוויר מספק הלוויין Esri
+                tile_url = f"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{zoom}/{ytile}/{xtile}"
+                headers = {'User-Agent': 'Mozilla/5.0'}
                 
                 try:
                     res = requests.get(tile_url, headers=headers, timeout=5)
                     if res.status_code == 200:
                         st.session_state["fetched_bg_map"] = Image.open(io.BytesIO(res.content)).convert("RGB").resize((800, 450))
-                        st.success("תמונת המפה נטענה בהצלחה ללוח השרטוט למטה!")
+                        st.success("תצלום האוויר נטען בהצלחה לרקע!")
                     else:
-                        st.warning("לא ניתן להוריד מפה אוטומטית. ניתן להעלות תמונת מסך/תצלום אוויר בטופס למטה.")
+                        st.warning("לא ניתן להוריד מפה אוטומטית. ניתן להעלות תמונה ידנית.")
                 except Exception as e:
-                    st.warning(f"שגיאת תקשורת קלה. מומלץ להעלות תמונה ידנית: {e}")
+                    st.warning(f"שגיאת תקשורת: {e}")
 
     st.divider()
     st.subheader("📐 לוח שרטוט וסקיצה הנדסית לצומת")
-    st.caption("שרטט את תוואי הכבלים, העמודים והפנסים. השרטוט החזותי שייווצר פה יוטמע כתמונה מלאה בתוך קובץ ה-Excel.")
+    st.caption("שרטט את תוואי הכבלים, העמודים והפנסים. השרטוט ימוזג מעל תצלום האוויר ישירות בתוך קובץ ה-Excel.")
 
     col_tool1, col_tool2, col_tool3 = st.columns(3)
     with col_tool1:
@@ -145,26 +147,25 @@ with tab1:
     with col_tool2:
         stroke_color = st.color_picker("צבע התוואי/האלמנט:", "#FF0000")
     with col_tool3:
-        stroke_width = st.slider("עובי הקו:", 1, 15, 3)
+        stroke_width = st.slider("עובי הקו:", 1, 15, 4)
 
     bg_image_file = st.file_uploader("📷 העלה תמונת רקע / תצלום אוויר לצומת (אופציונלי):", type=["png", "jpg", "jpeg"])
     
     bg_img = None
     if bg_image_file:
         bg_img = Image.open(bg_image_file).convert("RGB").resize((800, 450))
+        st.session_state["fetched_bg_map"] = bg_img
     elif "fetched_bg_map" in st.session_state:
         bg_img = st.session_state["fetched_bg_map"]
 
-    # הפתרון לשגיאת image_to_url בגרסאות Streamlit חדשות:
-    # הצגת תמונת הרקע מעל/מתחת ללוח השרטוט במקרה הצורך
     if bg_img is not None:
-        st.image(bg_img, caption="תמונת רקע נבחרת לשרטוט", width=800)
+        st.image(bg_img, caption="תצלום אוויר נבחר (ימוזג כרקע לשרטוט ב-Excel)", width=800)
 
     canvas_result = st_canvas(
-        fill_color="rgba(255, 165, 0, 0.3)",
+        fill_color="rgba(255, 165, 0, 0.4)",
         stroke_width=stroke_width,
         stroke_color=stroke_color,
-        background_color="#FFFFFF",
+        background_color="rgba(0,0,0,0)",
         height=450,
         width=800,
         drawing_mode=drawing_mode,
@@ -257,7 +258,7 @@ with tab4:
     m3.metric("כבל הארקה תקני", f"{cable_ground} מטר")
 
 # ---------------------------------------------------------
-# כרטיסייה 5: הפקת דוח Excel עם סקיצה ויזואלית מובנית
+# כרטיסייה 5: הפקת דוח Excel עם מיזוג תצלום אוויר + שרטוט
 # ---------------------------------------------------------
 with tab5:
     st.subheader("📥 הפקת דוח Excel למנכ״ל")
@@ -317,41 +318,48 @@ with tab5:
         ws1.cell(row=cable_start_row+3, column=1, value="כבל הארקה תקני")
         ws1.cell(row=cable_start_row+3, column=2, value=f"{cable_ground} מטר")
 
-        # ------------------- גיליון 2: סקיצה הנדסית ויזואלית -------------------
+        # ------------------- גיליון 2: מיזוג תצלום אוויר + שרטוט -------------------
         ws2 = wb.create_sheet(title="סקיצת תוואי ומיקומים")
         ws2.views.sheetView[0].rightToLeft = True
 
         ws2.merge_cells("A1:G1")
         title_cell2 = ws2["A1"]
-        title_cell2.value = f"תרשים סקיצת צומת ותוואי שטח - {junction_name}"
+        title_cell2.value = f"תרשים סקיצת צומת (תצלום אוויר + תוואי) - {junction_name}"
         title_cell2.font = Font(name="Arial", size=14, bold=True, color="FFFFFF")
         title_cell2.fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
         title_cell2.alignment = Alignment(horizontal="center", vertical="center")
 
-        if "canvas_sketch_image" in st.session_state and st.session_state["canvas_sketch_image"] is not None:
-            img_data = st.session_state["canvas_sketch_image"]
-            img = Image.fromarray(img_data.astype('uint8'), 'RGBA')
-            
-            bg = Image.new("RGB", img.size, (255, 255, 255))
-            bg.paste(img, mask=img.split()[3])
-            
+        # מיזוג חכם: הלבשת תמונת השרטוט על תצלום האוויר
+        bg_image = st.session_state.get("fetched_bg_map", None)
+        sketch_data = st.session_state.get("canvas_sketch_image", None)
+
+        if bg_image is not None or sketch_data is not None:
+            if bg_image is not None:
+                final_combined_img = bg_image.copy().resize((800, 450))
+            else:
+                final_combined_img = Image.new("RGB", (800, 450), (255, 255, 255))
+
+            if sketch_data is not None:
+                sketch_img = Image.fromarray(sketch_data.astype('uint8'), 'RGBA')
+                final_combined_img.paste(sketch_img, (0, 0), sketch_img)
+
             img_byte_arr = io.BytesIO()
-            bg.save(img_byte_arr, format='PNG')
+            final_combined_img.save(img_byte_arr, format='PNG')
             img_byte_arr.seek(0)
             
             excel_img = OpenpyxlImage(img_byte_arr)
-            excel_img.width = 650
-            excel_img.height = 360
+            excel_img.width = 720
+            excel_img.height = 405
             ws2.add_image(excel_img, "B3")
         else:
-            ws2.cell(row=4, column=2, value="לא בוצע שרטוט ויזואלי על גבי הלוח.").font = Font(bold=True, color="FF0000")
+            ws2.cell(row=4, column=2, value="לא נטענה מפה או בוצע שרטוט.").font = Font(bold=True, color="FF0000")
 
         wb.save(output)
         return output.getvalue()
 
     excel_file = generate_excel_report()
     st.download_button(
-        label="📊 הורד דוח Excel הנדסי (כולל תרשים סקיצה חזותי)",
+        label="📊 הורד דוח Excel הנדסי (עם תצלום אוויר ושרטוט משולב)",
         data=excel_file,
         file_name=f"Junction_Report_{junction_name.replace(' ', '_')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
