@@ -4,15 +4,11 @@ import io
 import math
 import requests
 from PIL import Image
-import folium
-from streamlit_folium import st_folium
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.drawing.image import Image as OpenpyxlImage
-from geopy.geocoders import Nominatim
 from streamlit_drawable_canvas import st_canvas
 
-# הגדרות עמוד ראשי
 st.set_page_config(
     page_title="מערכת פיקוח צמתים - רכבת קלה",
     page_icon="🚦",
@@ -21,18 +17,17 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    .main-title { font-size: 32px; font-weight: bold; color: #1E3A8A; text-align: right; margin-bottom: 5px; }
-    .sub-title { font-size: 18px; color: #4B5563; text-align: right; margin-bottom: 20px; }
+    .main-title { font-size: 30px; font-weight: bold; color: #1E3A8A; text-align: right; }
+    .sub-title { font-size: 16px; color: #4B5563; text-align: right; margin-bottom: 15px; }
     .stButton>button { width: 100%; background-color: #1E3A8A; color: white; font-weight: bold; }
-    .footer { text-align: center; margin-top: 40px; padding: 15px; border-top: 1px solid #E5E7EB; color: #6B7280; font-size: 14px; }
     </style>
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="main-title">🚦 מערכת פיקוח צמתים וכתב כמויות - רכבת קלה</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">תיעוד מהיר בשטח | סקיצת מפה ושרטוט תוואי | אישור הארקה | הפקת דוח Excel</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">עריכת שרטוט על גבי תוכנית/אורתופוטו | אישור הארקה | הפקת דוח Excel</div>', unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🎨 סקיצת צומת ומפה", 
+    "🎨 סקיצת צומת ותוכנית", 
     "🔢 ספירת ציוד בשטח", 
     "⚡ אישור הארקה ובטיחות",
     "📊 כתב כמויות וחישוב כבלים",
@@ -40,10 +35,10 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 # ---------------------------------------------------------
-# כרטיסייה 1: סקיצת צומת ושרטוט ויזואלי
+# כרטיסייה 1: שרטוט על תוכנית / אורתופוטו
 # ---------------------------------------------------------
 with tab1:
-    st.subheader("📌 פרטי הפיקוח ומיקום")
+    st.subheader("📌 פרטי הפיקוח")
     col_a, col_b = st.columns(2)
     with col_a:
         junction_name = st.text_input("שם / מספר הצומת", "אלנבי מנחם בגין תל אביב")
@@ -56,83 +51,28 @@ with tab1:
     with col_b:
         inspection_date = st.date_input("תאריך סיור הפיקוח")
         cabling_mode = st.radio("סוג כבילה מרכזי בתוואי", ["כבילה תחתית (שרוולים/שוקיות באדמה)", "כבילה עילית (זמנית על מתוחים)"])
-        general_notes = st.text_area("הערות כלליות/מיקום צומת", "תוואי כבילה מתוכנן מצד מזרח למערב כולל מעבר ארון פיקוד")
+        general_notes = st.text_area("הערות כלליות", "תוואי כבילה מתוכנן מצד מזרח למערב כולל מעבר ארון פיקוד")
 
     st.divider()
-    st.subheader("🗺️ איתור ובחירת נקודת הצומת על גבי המפה")
-    st.caption("חפש כתובת או לחץ ישירות על גבי המפה כדי לסמן את הנקודה המדויקת של הצומת:")
+    st.subheader("📷 העלאת תוכנית צומת / אורתופוטו ברזולוציה גבוהה")
+    st.caption("כדי לראות מעברי חצייה ורמזורים בבירור, מומלץ להעלות צילום מסך מ-Govmap, אורתופוטו או תוכנית הסדר תנועה (PNG/JPG):")
 
-    if "map_lat" not in st.session_state:
-        st.session_state["map_lat"] = 32.06050
-        st.session_state["map_lon"] = 34.77537
-
-    col_map_in1, col_map_in2 = st.columns([3, 1])
-    with col_map_in1:
-        map_search_query = st.text_input("חיפוש כתובת / צומת:", value=junction_name)
-    with col_map_in2:
-        if st.button("🔍 חפש כתובת"):
-            try:
-                geolocator = Nominatim(user_agent="traffic_inspector_app_v5")
-                location = geolocator.geocode(map_search_query)
-                if location:
-                    st.session_state["map_lat"] = location.latitude
-                    st.session_state["map_lon"] = location.longitude
-                    st.success(f"נמצא: {location.address}")
-                else:
-                    st.error("הכתובת לא נמצאה, לחץ ידנית על המפה לבחירת מיקום.")
-            except Exception as e:
-                st.error(f"שגיאת איתור: {e}")
-
-    # מפת תצלום לוויין / אוויר מובנית ב-Folium
-    m = folium.Map(
-        location=[st.session_state["map_lat"], st.session_state["map_lon"]], 
-        zoom_start=18,
-        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        attr="Esri Satellite"
-    )
-    folium.Marker(
-        [st.session_state["map_lat"], st.session_state["map_lon"]],
-        popup="מיקום הצומת הנבחר",
-        tooltip="מיקום הצומת"
-    ).add_to(m)
-
-    map_data = st_folium(m, height=380, width=800, key="interactive_folium_map")
-
-    if map_data and map_data.get("last_clicked"):
-        st.session_state["map_lat"] = map_data["last_clicked"]["lat"]
-        st.session_state["map_lon"] = map_data["last_clicked"]["lng"]
-
-    col_btn_fetch, _ = st.columns([2, 2])
-    with col_btn_fetch:
-        if st.button("🛰️ טען תצלום אוויר ללוח השרטוט"):
-            with st.spinner("מוריד תצלום אוויר ברזולוציה גבוהה..."):
-                lat, lon = st.session_state["map_lat"], st.session_state["map_lon"]
-                zoom = 18
-                
-                n = 2.0 ** zoom
-                xtile = int((lon + 180.0) / 360.0 * n)
-                ytile = int((1.0 - math.log(math.tan(math.radians(lat)) + (1.0 / math.cos(math.radians(lat)))) / math.pi) / 2.0 * n)
-                
-                # הורדת תצלום אוויר מספק הלוויין Esri
-                tile_url = f"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{zoom}/{ytile}/{xtile}"
-                headers = {'User-Agent': 'Mozilla/5.0'}
-                
-                try:
-                    res = requests.get(tile_url, headers=headers, timeout=5)
-                    if res.status_code == 200:
-                        st.session_state["fetched_bg_map"] = Image.open(io.BytesIO(res.content)).convert("RGB").resize((800, 450))
-                        st.success("תצלום האוויר נטען בהצלחה לרקע!")
-                    else:
-                        st.warning("לא ניתן להוריד מפה אוטומטית. ניתן להעלות תמונה ידנית.")
-                except Exception as e:
-                    st.warning(f"שגיאת תקשורת: {e}")
+    uploaded_bg = st.file_uploader("בחרו קובץ תמונה של הצומת:", type=["png", "jpg", "jpeg"])
+    
+    bg_img = None
+    if uploaded_bg is not None:
+        bg_img = Image.open(uploaded_bg).convert("RGB")
+        # התאמת גודל תוך שמירה על פרופורציות
+        bg_img = bg_img.resize((900, 500))
+        st.session_state["active_bg_img"] = bg_img
+    elif "active_bg_img" in st.session_state:
+        bg_img = st.session_state["active_bg_img"]
 
     st.divider()
-    st.subheader("📐 לוח שרטוט וסקיצה הנדסית לצומת")
-    st.caption("שרטט את תוואי הכבלים, העמודים והפנסים. השרטוט ימוזג מעל תצלום האוויר ישירות בתוך קובץ ה-Excel.")
+    st.subheader("📐 לוח שרטוט הנדסי")
 
-    col_tool1, col_tool2, col_tool3 = st.columns(3)
-    with col_tool1:
+    col_t1, col_t2, col_t3 = st.columns(3)
+    with col_t1:
         drawing_mode = st.selectbox(
             "כלי שרטוט:",
             ("freedraw", "line", "rect", "circle", "transform"),
@@ -144,32 +84,22 @@ with tab1:
                 "transform": "🖐️ הזזה ועריכת אלמנטים"
             }.get(x, x)
         )
-    with col_tool2:
+    with col_t2:
         stroke_color = st.color_picker("צבע התוואי/האלמנט:", "#FF0000")
-    with col_tool3:
+    with col_t3:
         stroke_width = st.slider("עובי הקו:", 1, 15, 4)
 
-    bg_image_file = st.file_uploader("📷 העלה תמונת רקע / תצלום אוויר לצומת (אופציונלי):", type=["png", "jpg", "jpeg"])
-    
-    bg_img = None
-    if bg_image_file:
-        bg_img = Image.open(bg_image_file).convert("RGB").resize((800, 450))
-        st.session_state["fetched_bg_map"] = bg_img
-    elif "fetched_bg_map" in st.session_state:
-        bg_img = st.session_state["fetched_bg_map"]
-
-    if bg_img is not None:
-        st.image(bg_img, caption="תצלום אוויר נבחר (ימוזג כרקע לשרטוט ב-Excel)", width=800)
-
+    # השרטוט מעל התמונה או רקע לבן במידה ולא הועלתה תמונה
     canvas_result = st_canvas(
         fill_color="rgba(255, 165, 0, 0.4)",
         stroke_width=stroke_width,
         stroke_color=stroke_color,
-        background_color="rgba(0,0,0,0)",
-        height=450,
-        width=800,
+        background_image=bg_img if bg_img is not None else None,
+        background_color="#FFFFFF" if bg_img is None else None,
+        height=500,
+        width=900,
         drawing_mode=drawing_mode,
-        key="canvas_junction_sketch",
+        key="canvas_high_res",
     )
 
     if canvas_result.image_data is not None:
@@ -258,7 +188,7 @@ with tab4:
     m3.metric("כבל הארקה תקני", f"{cable_ground} מטר")
 
 # ---------------------------------------------------------
-# כרטיסייה 5: הפקת דוח Excel עם מיזוג תצלום אוויר + שרטוט
+# כרטיסייה 5: הפקת דוח Excel
 # ---------------------------------------------------------
 with tab5:
     st.subheader("📥 הפקת דוח Excel למנכ״ל")
@@ -267,7 +197,7 @@ with tab5:
         output = io.BytesIO()
         wb = openpyxl.Workbook()
         
-        # ------------------- גיליון 1: כתב כמויות -------------------
+        # גיליון 1
         ws1 = wb.active
         ws1.title = "כתב כמויות וסיכום"
         ws1.views.sheetView[0].rightToLeft = True
@@ -318,26 +248,25 @@ with tab5:
         ws1.cell(row=cable_start_row+3, column=1, value="כבל הארקה תקני")
         ws1.cell(row=cable_start_row+3, column=2, value=f"{cable_ground} מטר")
 
-        # ------------------- גיליון 2: מיזוג תצלום אוויר + שרטוט -------------------
+        # גיליון 2: מיזוג השרטוט והתמונה
         ws2 = wb.create_sheet(title="סקיצת תוואי ומיקומים")
         ws2.views.sheetView[0].rightToLeft = True
 
         ws2.merge_cells("A1:G1")
         title_cell2 = ws2["A1"]
-        title_cell2.value = f"תרשים סקיצת צומת (תצלום אוויר + תוואי) - {junction_name}"
+        title_cell2.value = f"תרשים סקיצת צומת - {junction_name}"
         title_cell2.font = Font(name="Arial", size=14, bold=True, color="FFFFFF")
         title_cell2.fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
         title_cell2.alignment = Alignment(horizontal="center", vertical="center")
 
-        # מיזוג חכם: הלבשת תמונת השרטוט על תצלום האוויר
-        bg_image = st.session_state.get("fetched_bg_map", None)
+        bg_img_cur = st.session_state.get("active_bg_img", None)
         sketch_data = st.session_state.get("canvas_sketch_image", None)
 
-        if bg_image is not None or sketch_data is not None:
-            if bg_image is not None:
-                final_combined_img = bg_image.copy().resize((800, 450))
+        if bg_img_cur is not None or sketch_data is not None:
+            if bg_img_cur is not None:
+                final_combined_img = bg_img_cur.copy().resize((900, 500))
             else:
-                final_combined_img = Image.new("RGB", (800, 450), (255, 255, 255))
+                final_combined_img = Image.new("RGB", (900, 500), (255, 255, 255))
 
             if sketch_data is not None:
                 sketch_img = Image.fromarray(sketch_data.astype('uint8'), 'RGBA')
@@ -348,27 +277,17 @@ with tab5:
             img_byte_arr.seek(0)
             
             excel_img = OpenpyxlImage(img_byte_arr)
-            excel_img.width = 720
-            excel_img.height = 405
+            excel_img.width = 750
+            excel_img.height = 416
             ws2.add_image(excel_img, "B3")
-        else:
-            ws2.cell(row=4, column=2, value="לא נטענה מפה או בוצע שרטוט.").font = Font(bold=True, color="FF0000")
 
         wb.save(output)
         return output.getvalue()
 
     excel_file = generate_excel_report()
     st.download_button(
-        label="📊 הורד דוח Excel הנדסי (עם תצלום אוויר ושרטוט משולב)",
+        label="📊 הורד דוח Excel הנדסי",
         data=excel_file,
         file_name=f"Junction_Report_{junction_name.replace(' ', '_')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
-# ---------------------------------------------------------
-# פוטר זכויות יוצרים
-# ---------------------------------------------------------
-st.markdown(
-    '<div class="footer">© כל הזכויות שמורות לנתנאל הררי | 📞 0545520445</div>',
-    unsafe_allow_html=True
-)
