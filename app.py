@@ -3,6 +3,7 @@ import pandas as pd
 import io
 import math
 import requests
+import base64
 from PIL import Image
 import folium
 from streamlit_folium import st_folium
@@ -62,7 +63,6 @@ with tab1:
     st.subheader("🗺️ איתור ובחירת נקודת הצומת על גבי המפה")
     st.caption("חפש כתובת או לחץ ישירות על גבי המפה כדי לסמן את הנקודה המדויקת של הצומת:")
 
-    # מיקום ברירת מחדל (תל אביב - אלנבי / מנחם בגין)
     if "map_lat" not in st.session_state:
         st.session_state["map_lat"] = 32.06050
         st.session_state["map_lon"] = 34.77537
@@ -73,7 +73,7 @@ with tab1:
     with col_map_in2:
         if st.button("🔍 חפש כתובת"):
             try:
-                geolocator = Nominatim(user_agent="traffic_inspector_app_v3")
+                geolocator = Nominatim(user_agent="traffic_inspector_app_v4")
                 location = geolocator.geocode(map_search_query)
                 if location:
                     st.session_state["map_lat"] = location.latitude
@@ -84,7 +84,6 @@ with tab1:
             except Exception as e:
                 st.error(f"שגיאת איתור: {e}")
 
-    # הצגת מפה אינטראקטיבית לבחירת נקודה
     m = folium.Map(
         location=[st.session_state["map_lat"], st.session_state["map_lon"]], 
         zoom_start=17,
@@ -98,7 +97,6 @@ with tab1:
 
     map_data = st_folium(m, height=350, width=800, key="interactive_folium_map")
 
-    # עדכון מיקום לפי לחיצת עכבר על המפה
     if map_data and map_data.get("last_clicked"):
         st.session_state["map_lat"] = map_data["last_clicked"]["lat"]
         st.session_state["map_lon"] = map_data["last_clicked"]["lng"]
@@ -110,7 +108,6 @@ with tab1:
                 lat, lon = st.session_state["map_lat"], st.session_state["map_lon"]
                 zoom = 17
                 
-                # חישוב אריח מפה מדויק ותקני באמצעות ספרית math הרשמית
                 n = 2.0 ** zoom
                 xtile = int((lon + 180.0) / 360.0 * n)
                 ytile = int((1.0 - math.log(math.tan(math.radians(lat)) + (1.0 / math.cos(math.radians(lat)))) / math.pi) / 2.0 * n)
@@ -121,7 +118,7 @@ with tab1:
                 try:
                     res = requests.get(tile_url, headers=headers, timeout=5)
                     if res.status_code == 200:
-                        st.session_state["fetched_bg_map"] = Image.open(io.BytesIO(res.content)).resize((800, 450))
+                        st.session_state["fetched_bg_map"] = Image.open(io.BytesIO(res.content)).convert("RGB").resize((800, 450))
                         st.success("תמונת המפה נטענה בהצלחה ללוח השרטוט למטה!")
                     else:
                         st.warning("לא ניתן להוריד מפה אוטומטית. ניתן להעלות תמונת מסך/תצלום אוויר בטופס למטה.")
@@ -154,17 +151,20 @@ with tab1:
     
     bg_img = None
     if bg_image_file:
-        bg_img = Image.open(bg_image_file)
+        bg_img = Image.open(bg_image_file).convert("RGB").resize((800, 450))
     elif "fetched_bg_map" in st.session_state:
         bg_img = st.session_state["fetched_bg_map"]
 
-    # לוח השרטוט הגרפי
+    # הפתרון לשגיאת image_to_url בגרסאות Streamlit חדשות:
+    # הצגת תמונת הרקע מעל/מתחת ללוח השרטוט במקרה הצורך
+    if bg_img is not None:
+        st.image(bg_img, caption="תמונת רקע נבחרת לשרטוט", width=800)
+
     canvas_result = st_canvas(
         fill_color="rgba(255, 165, 0, 0.3)",
         stroke_width=stroke_width,
         stroke_color=stroke_color,
-        background_color="#F3F4F6" if bg_img is None else None,
-        background_image=bg_img,
+        background_color="#FFFFFF",
         height=450,
         width=800,
         drawing_mode=drawing_mode,
@@ -308,7 +308,6 @@ with tab5:
             ws1.cell(row=row_num, column=4, value=f"=C{row_num}-B{row_num}")
             ws1.cell(row=row_num, column=5, value="")
 
-        # הוספת חישובי כבלים ל-Excel
         cable_start_row = 17
         ws1.cell(row=cable_start_row, column=1, value="סיכום כבלים מתוכנן").font = Font(bold=True, size=12)
         ws1.cell(row=cable_start_row+1, column=1, value="כבל פיקוד רמזורים כבד")
@@ -329,12 +328,10 @@ with tab5:
         title_cell2.fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
         title_cell2.alignment = Alignment(horizontal="center", vertical="center")
 
-        # הזרקת תמונת הסקיצה הויזואלית לגיליון Excel
         if "canvas_sketch_image" in st.session_state and st.session_state["canvas_sketch_image"] is not None:
             img_data = st.session_state["canvas_sketch_image"]
             img = Image.fromarray(img_data.astype('uint8'), 'RGBA')
             
-            # המרת התמונה ל-RGB לצורך שמירה ב-Excel
             bg = Image.new("RGB", img.size, (255, 255, 255))
             bg.paste(img, mask=img.split()[3])
             
