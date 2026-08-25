@@ -3,7 +3,7 @@ import pandas as pd
 import io
 import math
 import requests
-from PIL import Image
+from PIL import Image, ImageDraw
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -14,13 +14,13 @@ from streamlit_drawable_canvas import st_canvas
 # הגדרות תצורה ועיצוב דף Streamlit
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title='מערכת פיקוח תשתיות רמזורים - שפיר הנדסה',
+    page_title='מערכת פיקוח תשתיות רמזורים ובקרה',
     page_icon='🚦',
     layout='wide',
     initial_sidebar_state='expanded'
 )
 
-# סגנונות CSS מתקדמים ומיתוג שפיר הנדסה
+# סגנונות CSS מתקדמים
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap');
@@ -29,7 +29,7 @@ st.markdown("""
         font-family: 'Rubik', sans-serif;
         direction: rtl;
     }
-    .shapir-header {
+    .main-header {
         background: linear-gradient(135deg, #0f2b48 0%, #1e4d7b 100%);
         color: white;
         padding: 24px 30px;
@@ -38,35 +38,17 @@ st.markdown("""
         margin-bottom: 25px;
         border-right: 8px solid #00a887;
     }
-    .shapir-header h1 {
+    .main-header h1 {
         font-size: 28px;
         font-weight: 700;
         margin: 0;
         color: #ffffff;
     }
-    .shapir-header p {
+    .main-header p {
         font-size: 15px;
         margin-top: 6px;
         margin-bottom: 0;
         color: #d0e1f9;
-    }
-    .badge-shapir {
-        background-color: #00a887;
-        color: white;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        display: inline-block;
-        margin-bottom: 8px;
-    }
-    .metric-card {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 16px;
-        text-align: center;
-        border-top: 4px solid #1e4d7b;
     }
     .stButton>button {
         width: 100%;
@@ -85,10 +67,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# כותרת ראשית ומיתוג
+# כותרת ראשית מעודכנת (ללא לוגו/אזכור שפיר)
 st.markdown("""
-<div class="shapir-header">
-    <div class="badge-shapir">SHAPIR ENGINEERING | אגף תשתיות ורכבת קלה</div>
+<div class="main-header">
     <h1>🚦 מערכת פיקוח הנדסית, בקרה וכתב כמויות - תשתיות צמתים</h1>
     <p>מערכת פיקוח מקצועית להנפקת דוחות מנכ"ל | עריכת תוכניות עבודה, בדיקות הארקה וחישובי כתבי כמויות כבלים</p>
 </div>
@@ -104,7 +85,41 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 # ---------------------------------------------------------
-# כרטיסייה 1: שרטוט על תוכנית / אורתופוטו
+# פונקציות עזר לייצור רקע צומת 3 או 4 כיוונים
+# ---------------------------------------------------------
+def create_junction_background(junction_type="4_way"):
+    img = Image.new("RGB", (900, 500), "#2c3e50")
+    draw = ImageDraw.Draw(img)
+    
+    # אספלט ומדרכות
+    if junction_type == "4_way":
+        # כביש אנכי
+        draw.rectangle([350, 0, 550, 500], fill="#34495e")
+        # כביש אופקי
+        draw.rectangle([0, 175, 900, 325], fill="#34495e")
+        # קווי מעבר חצייה
+        for y in range(180, 320, 20):
+            draw.line([(330, y), (350, y)], fill="white", width=4)
+            draw.line([(550, y), (570, y)], fill="white", width=4)
+        for x in range(355, 545, 20):
+            draw.line([(x, 155), (x, 175)], fill="white", width=4)
+            draw.line([(x, 325), (x, 345)], fill="white", width=4)
+    else:  # 3_way / T-Junction
+        # כביש אופקי
+        draw.rectangle([0, 175, 900, 325], fill="#34495e")
+        # כביש אנכי חיבור תחתון
+        draw.rectangle([350, 175, 550, 500], fill="#34495e")
+        # מעברי חצייה
+        for y in range(180, 320, 20):
+            draw.line([(330, y), (350, y)], fill="white", width=4)
+            draw.line([(550, y), (570, y)], fill="white", width=4)
+        for x in range(355, 545, 20):
+            draw.line([(x, 325), (x, 345)], fill="white", width=4)
+            
+    return img
+
+# ---------------------------------------------------------
+# כרטיסייה 1: שרטוט ובנק פנסים
 # ---------------------------------------------------------
 with tab1:
     st.subheader("📌 פרטי מפתח לסיור הפיקוח")
@@ -113,7 +128,7 @@ with tab1:
     with col_a:
         junction_name = st.text_input("שם / מספר הצומת והפרויקט", "אלנבי - מנחם בגין (תוואי קו סגול)")
         inspector_name = st.text_input("שם המפקח האחראי", "נתנאל הררי - מפקח תשתיות מוסמך")
-        contractor_name = st.text_input("קבלן מבצע / חברה מבצעת", "שפיר הנדסה - אגף תשתיות")
+        contractor_name = st.text_input("קבלן מבצע / חברה מבצעת", "חברה מבצעת - אגף תשתיות")
     with col_b:
         inspection_date = st.date_input("תאריך סיור הפיקוח")
         project_phase = st.selectbox("שלב הסדר התנועה (תמ''ת/תמ''ק)", [
@@ -126,33 +141,43 @@ with tab1:
         general_notes = st.text_area("הערות הנדסיות ודגשי שטח", "תוואי כבילה מתוכנן מצד מזרח למערב כולל מעבר ארון פיקוד. בוצעה בדיקת שרוולים והכנה לביטון.", height=128)
 
     st.divider()
-    st.subheader("📷 העלאת תוכנית צומת / אורתופוטו ברזולוציה גבוהה")
-    st.caption("לצפייה מיטבית במעברי חצייה, רמזורים ושרוולים, מומלץ להעלות צילום מסך מ-Govmap, אורתופוטו או תוכנית הסדר תנועה (PNG/JPG):")
-
-    uploaded_bg = st.file_uploader("בחרו קובץ תמונה של הצומת:", type=["png", "jpg", "jpeg"])
+    st.subheader("🗺️ בחירת בסיס תרשים הצומת")
     
+    bg_option = st.radio(
+        "בחר מקור לרקע הצומת:",
+        ["מחולל צומת תלת-ממדי/דו-ממדי מובנה", "העלאת תוכנית / אורתופוטו (קובץ תמונה)"],
+        horizontal=True
+    )
+
     bg_img = None
-    if uploaded_bg is not None:
-        bg_img = Image.open(uploaded_bg).convert("RGB")
-        bg_img = bg_img.resize((900, 500))
+    if bg_option == "מחולל צומת תלת-ממדי/דו-ממדי מובנה":
+        j_type = st.selectbox("בחר סוג צומת:", ["צומת 4 כיוונים (X)", "צומת 3 כיוונים (T)"])
+        j_code = "4_way" if "4" in j_type else "3_way"
+        bg_img = create_junction_background(j_code)
         st.session_state["active_bg_img"] = bg_img
-    elif "active_bg_img" in st.session_state:
-        bg_img = st.session_state["active_bg_img"]
+    else:
+        uploaded_bg = st.file_uploader("בחרו קובץ תמונה של הצומת (PNG/JPG):", type=["png", "jpg", "jpeg"])
+        if uploaded_bg is not None:
+            bg_img = Image.open(uploaded_bg).convert("RGB").resize((900, 500))
+            st.session_state["active_bg_img"] = bg_img
+        elif "active_bg_img" in st.session_state:
+            bg_img = st.session_state["active_bg_img"]
 
     st.divider()
-    st.subheader("📐 לוח שרטוט וסימון תוואי הנדסי")
+    st.subheader("🚥 בנק פנסים, תמרורים וסרגל כלי שרטוט")
+    st.caption("השתמשו במצב '🖐️ הזזה, העמדת פנסים ועריכה' כדי להזיז, לסובב או למקם פנסים ואלמנטים מבנק הציוד.")
 
     col_t1, col_t2, col_t3 = st.columns(3)
     with col_t1:
         drawing_mode = st.selectbox(
-            "כלי שרטוט:",
-            ("freedraw", "line", "rect", "circle", "transform"),
+            "כלי עבודה / אלמנט להצבה:",
+            ("transform", "freedraw", "line", "rect", "circle"),
             format_func=lambda x: {
+                "transform": "🖐️ הזזה, העמדת פנסים ועריכה",
                 "freedraw": "✏️ ציור חופשי (תוואי כבלים)",
                 "line": "📏 קו ישר (שרוול/חפירה)",
-                "rect": "🟦 מלבן / ארון פיקוד/תא תאורה",
-                "circle": "🟢 עיגול / עמוד / פנס",
-                "transform": "🖐️ הזזה ועריכת אלמנטים"
+                "rect": "🟦 מלבן / ארון פיקוד",
+                "circle": "🟢 עיגול / עמוד רמזור"
             }.get(x, x)
         )
     with col_t2:
@@ -160,8 +185,16 @@ with tab1:
     with col_t3:
         stroke_width = st.slider("עובי הקו:", 1, 15, 4)
 
+    # בנק פנסים ואלמנטים מוכנים להוספה לקנווס
+    st.markdown("**🚥 בנק פנסים נגררים מהיר:**")
+    btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
+    
+    if "canvas_objects" not in st.session_state:
+        st.session_state["canvas_objects"] = []
+
+    # קנווס אינטראקטיבי
     canvas_result = st_canvas(
-        fill_color="rgba(0, 168, 135, 0.3)",
+        fill_color="rgba(0, 168, 135, 0.4)",
         stroke_width=stroke_width,
         stroke_color=stroke_color,
         background_image=bg_img if bg_img is not None else None,
@@ -169,7 +202,7 @@ with tab1:
         height=500,
         width=900,
         drawing_mode=drawing_mode,
-        key="canvas_high_res",
+        key="canvas_junction_interactive",
     )
 
     if canvas_result.image_data is not None:
@@ -262,32 +295,28 @@ with tab4:
     m3.metric("כבל הארקה תקני (חשוף / בידוד)", f"{cable_ground} מטר")
 
 # ---------------------------------------------------------
-# כרטיסייה 5: הפקת דוח Excel הנדסי ומעוצב ברמת מנכ"ל
+# כרטיסייה 5: הפקת דוח Excel הנדסי ומעוצב
 # ---------------------------------------------------------
 with tab5:
-    st.subheader("📥 הפקת דוח מנהלים הנדסי (Excel ממותג שפיר)")
+    st.subheader("📥 הפקת דוח מנהלים הנדסי (Excel)")
     st.markdown("הדוח כולל עיצוב מותאם, גיליון תקציר מנהלים, כתב כמויות, פרוטוקול הארקה וסקיצה הנדסית משולבת.")
 
     def generate_excel_report():
         output = io.BytesIO()
         wb = openpyxl.Workbook()
         
-        # ---------------------------------------------------------
-        # הגדרות עיצוב ופלטת צבעים מוסדית - שפיר הנדסה
-        # ---------------------------------------------------------
-        COLOR_PRIMARY = "0F2B48"       # כחול נייבי כהה - שפיר
-        COLOR_SECONDARY = "1E4D7B"     # כחול מנהלים
-        COLOR_ACCENT = "00A887"        # ירוק טורקיז הנדסי
-        COLOR_LIGHT_BG = "F4F7FA"      # אפור-כחלחל בהיר לרקע
-        COLOR_ZEBRA = "F9FBFD"         # זברה שורות
-        COLOR_CARD_BG = "EBF2F8"       # רקע כרטיסי מדדים
-        COLOR_BORDER = "D1D5DB"        # גבולות אפורים
-        COLOR_SUCCESS_BG = "E6F4EA"    # ירוק בהיר תקין
-        COLOR_SUCCESS_FG = "137333"    # ירוק כהה
-        COLOR_DANGER_BG = "FCE8E6"     # אדום בהיר
-        COLOR_DANGER_FG = "C5221F"     # אדום כהה
+        COLOR_PRIMARY = "0F2B48"
+        COLOR_SECONDARY = "1E4D7B"
+        COLOR_ACCENT = "00A887"
+        COLOR_LIGHT_BG = "F4F7FA"
+        COLOR_ZEBRA = "F9FBFD"
+        COLOR_CARD_BG = "EBF2F8"
+        COLOR_BORDER = "D1D5DB"
+        COLOR_SUCCESS_BG = "E6F4EA"
+        COLOR_SUCCESS_FG = "137333"
+        COLOR_DANGER_BG = "FCE8E6"
+        COLOR_DANGER_FG = "C5221F"
 
-        # גופנים
         font_main_title = Font(name="Arial", size=18, bold=True, color="FFFFFF")
         font_sub_title = Font(name="Arial", size=11, bold=False, color="D0E1F9")
         font_section_header = Font(name="Arial", size=13, bold=True, color=COLOR_PRIMARY)
@@ -297,40 +326,32 @@ with tab5:
         font_metric_num = Font(name="Arial", size=16, bold=True, color=COLOR_PRIMARY)
         font_metric_lbl = Font(name="Arial", size=9, bold=True, color="555555")
 
-        # מילויים (Fills)
         fill_primary = PatternFill(start_color=COLOR_PRIMARY, end_color=COLOR_PRIMARY, fill_type="solid")
         fill_secondary = PatternFill(start_color=COLOR_SECONDARY, end_color=COLOR_SECONDARY, fill_type="solid")
-        fill_accent = PatternFill(start_color=COLOR_ACCENT, end_color=COLOR_ACCENT, fill_type="solid")
         fill_zebra = PatternFill(start_color=COLOR_ZEBRA, end_color=COLOR_ZEBRA, fill_type="solid")
         fill_card = PatternFill(start_color=COLOR_CARD_BG, end_color=COLOR_CARD_BG, fill_type="solid")
         fill_light_bg = PatternFill(start_color=COLOR_LIGHT_BG, end_color=COLOR_LIGHT_BG, fill_type="solid")
 
-        # גבולות (Borders)
         thin_side = Side(border_style="thin", color=COLOR_BORDER)
         thick_bottom_side = Side(border_style="medium", color=COLOR_PRIMARY)
         border_all = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
         border_header = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thick_bottom_side)
         border_total = Border(top=Side(border_style="thin", color=COLOR_PRIMARY), bottom=Side(border_style="double", color=COLOR_PRIMARY))
 
-        # יישורים (Alignments)
         align_center = Alignment(horizontal="center", vertical="center", wrap_text=True)
         align_right = Alignment(horizontal="right", vertical="center", wrap_text=True)
-        align_left = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
-        # ---------------------------------------------------------
-        # גיליון 1: תקציר מנהלים ודוח פיקוח אלמנטים
-        # ---------------------------------------------------------
+        # גיליון 1
         ws1 = wb.active
         ws1.title = "תקציר מנהלים וכתב כמויות"
         ws1.views.sheetView[0].rightToLeft = True
 
-        # כותרת ראשית ומיתוג
         ws1.merge_cells("A1:F1")
         ws1.merge_cells("A2:F2")
         title_cell = ws1["A1"]
         sub_cell = ws1["A2"]
         
-        title_cell.value = "שפיר הנדסה - דוח פיקוח הנדסי ובקרה | תשתיות רמזורים"
+        title_cell.value = "דוח פיקוח הנדסי ובקרה | תשתיות רמזורים"
         title_cell.font = font_main_title
         title_cell.fill = fill_primary
         title_cell.alignment = align_center
@@ -343,7 +364,6 @@ with tab5:
         ws1.row_dimensions[1].height = 32
         ws1.row_dimensions[2].height = 20
 
-        # טבלת פרטי מפתח לסיור
         ws1.cell(row=4, column=1, value="📌 פרטי הסיור והפיקוח").font = font_section_header
         
         info_data = [
@@ -370,29 +390,23 @@ with tab5:
 
             ws1.row_dimensions[idx].height = 22
 
-        # הערות כלליות
         ws1.cell(row=8, column=1, value="דגשים והערות המפקח:").font = font_data_bold
         ws1.merge_cells("B8:F8")
         ws1.cell(row=8, column=2, value=general_notes).font = font_data
 
-        # ---------------------------------------------------------
-        # כרטיסי מדדי כבלים (Metric Cards)
-        # ---------------------------------------------------------
+        # כרטיסי כמויות
         ws1.cell(row=10, column=1, value="🔌 אומדן כמויות כבלים מתוכנן").font = font_section_header
 
-        # כרטיס 1
         ws1.merge_cells("A11:B11")
         ws1.merge_cells("A12:B12")
         ws1.cell(row=11, column=1, value="כבל פיקוד רמזורים כבד").font = font_metric_lbl
         ws1.cell(row=12, column=1, value=f"{cable_heavy} מ'").font = font_metric_num
 
-        # כרטיס 2
         ws1.merge_cells("C11:D11")
         ws1.merge_cells("C12:D12")
         ws1.cell(row=11, column=3, value="כבל פיקוד הולכי רגל").font = font_metric_lbl
         ws1.cell(row=12, column=3, value=f"{cable_light} מ'").font = font_metric_num
 
-        # כרטיס 3
         ws1.merge_cells("E11:F11")
         ws1.merge_cells("E12:F12")
         ws1.cell(row=11, column=5, value="כבל הארקה תקני").font = font_metric_lbl
@@ -405,9 +419,7 @@ with tab5:
                 cell.alignment = align_center
                 cell.border = border_all
 
-        # ---------------------------------------------------------
-        # טבלת כתב כמויות הנדסי
-        # ---------------------------------------------------------
+        # טבלת כמויות
         ws1.cell(row=14, column=1, value="📋 כתב כמויות ציוד ורכיבי צומת").font = font_section_header
         
         headers = ["תיאור הרכיב / התשתית", "כמות מצב קיים (לפני)", "כמות מתוכננת (אחרי)", "שינוי (דלתא Δ)", "יחידת מידה", "הערות הנדסיות"]
@@ -425,16 +437,14 @@ with tab5:
             current_row = start_row + r_idx
             ws1.row_dimensions[current_row].height = 22
             
-            c1 = ws1.cell(row=current_row, column=1, value=row["תיאור הרכיב"])
-            c2 = ws1.cell(row=current_row, column=2, value=row["לפני"])
-            c3 = ws1.cell(row=current_row, column=3, value=row["אחרי"])
+            ws1.cell(row=current_row, column=1, value=row["תיאור הרכיב"])
+            ws1.cell(row=current_row, column=2, value=row["לפני"])
+            ws1.cell(row=current_row, column=3, value=row["אחרי"])
             
-            # נוסחה דינמית של אקסל לדלתא
             c4 = ws1.cell(row=current_row, column=4, value=f"=C{current_row}-B{current_row}")
-            c5 = ws1.cell(row=current_row, column=5, value="יחידות")
-            c6 = ws1.cell(row=current_row, column=6, value="תקין ומאושר" if row["אחרי"] >= row["לפני"] else "פורק מהשטח")
+            ws1.cell(row=current_row, column=5, value="יחידות")
+            ws1.cell(row=current_row, column=6, value="תקין ומאושר" if row["אחרי"] >= row["לפני"] else "פורק מהשטח")
 
-            # עיצוב שורות
             row_fill = fill_zebra if r_idx % 2 == 1 else PatternFill(fill_type=None)
             for c_idx in range(1, 7):
                 cell = ws1.cell(row=current_row, column=c_idx)
@@ -450,7 +460,6 @@ with tab5:
 
             c4.font = font_data_bold
 
-        # שורת סיכום
         total_row = start_row + len(df_boq)
         ws1.row_dimensions[total_row].height = 24
         ws1.cell(row=total_row, column=1, value='סה"כ רכיבים בצומת').font = font_data_bold
@@ -465,15 +474,13 @@ with tab5:
             if c_idx in [2, 3, 4]:
                 cell.alignment = align_center
 
-        # ---------------------------------------------------------
-        # גיליון 2: פרוטוקול הארקה ובטיחות
-        # ---------------------------------------------------------
+        # גיליון 2
         ws2 = wb.create_sheet(title="פרוטוקול הארקה ובטיחות")
         ws2.views.sheetView[0].rightToLeft = True
 
         ws2.merge_cells("A1:E1")
         t2 = ws2["A1"]
-        t2.value = f"שפיר הנדסה - פרוטוקול בדיקת הארקה ובטיחות חשמל | {junction_name}"
+        t2.value = f"פרוטוקול בדיקת הארקה ובטיחות חשמל | {junction_name}"
         t2.font = font_main_title
         t2.fill = fill_primary
         t2.alignment = align_center
@@ -515,15 +522,13 @@ with tab5:
             for c in range(1, 6):
                 ws2.cell(row=idx, column=c).border = border_all
 
-        # ---------------------------------------------------------
-        # גיליון 3: מיזוג השרטוט והסקיצה
-        # ---------------------------------------------------------
+        # גיליון 3
         ws3 = wb.create_sheet(title="סקיצת תוואי ומיקומים")
         ws3.views.sheetView[0].rightToLeft = True
 
         ws3.merge_cells("A1:H1")
         t3 = ws3["A1"]
-        t3.value = f"שפיר הנדסה - תרשים סקיצה הנדסית ותוואי צומת | {junction_name}"
+        t3.value = f"תרשים סקיצה הנדסית ותוואי צומת | {junction_name}"
         t3.font = font_main_title
         t3.fill = fill_primary
         t3.alignment = align_center
@@ -551,15 +556,12 @@ with tab5:
             excel_img.height = 455
             ws3.add_image(excel_img, "B3")
 
-        # ---------------------------------------------------------
-        # התאמת רוחב עמודות אוטומטית לכל הגיליונות
-        # ---------------------------------------------------------
         for ws in wb.worksheets:
             for col in ws.columns:
                 max_len = 0
                 col_letter = get_column_letter(col[0].column)
                 for cell in col:
-                    if cell.row in [1, 2]: # התעלמות מכותרות ממוזגות
+                    if cell.row in [1, 2]:
                         continue
                     val_str = str(cell.value or '')
                     if len(val_str) > max_len:
@@ -573,8 +575,8 @@ with tab5:
     
     st.markdown("### 📄 הורדת הקובץ המוגמר")
     st.download_button(
-        label="📥 הורד דוח Excel הנדסי מעוצב (שפיר הנדסה)",
+        label="📥 הורד דוח Excel הנדסי מעוצב",
         data=excel_file,
-        file_name=f"Shapir_Junction_Report_{junction_name.replace(' ', '_')}.xlsx",
+        file_name=f"Junction_Report_{junction_name.replace(' ', '_')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
