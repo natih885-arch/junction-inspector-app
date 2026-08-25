@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+import math
 import requests
 from PIL import Image
 import folium
@@ -107,9 +108,16 @@ with tab1:
         if st.button("🖼️ טען את מפת המיקום הנבחר ללוח השרטוט"):
             with st.spinner("מכין תמונה מתוך המפה..."):
                 lat, lon = st.session_state["map_lat"], st.session_state["map_lon"]
-                # שליפה מאובטחת דרך שרת מפות חופשי של OpenStreetMap
-                tile_url = f"https://tile.openstreetmap.org/17/{int((lon + 180) / 360 * (1 << 17))}/{int((1 - pd.np.log(pd.np.tan(pd.np.radians(lat)) + 1 / pd.np.cos(pd.np.radians(lat))) / pd.np.pi) / 2 * (1 << 17))}.png"
-                headers = {'User-Agent': 'Mozilla/5.0'}
+                zoom = 17
+                
+                # חישוב אריח מפה מדויק ותקני באמצעות ספרית math הרשמית
+                n = 2.0 ** zoom
+                xtile = int((lon + 180.0) / 360.0 * n)
+                ytile = int((1.0 - math.log(math.tan(math.radians(lat)) + (1.0 / math.cos(math.radians(lat)))) / math.pi) / 2.0 * n)
+                
+                tile_url = f"https://tile.openstreetmap.org/{zoom}/{xtile}/{ytile}.png"
+                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                
                 try:
                     res = requests.get(tile_url, headers=headers, timeout=5)
                     if res.status_code == 200:
