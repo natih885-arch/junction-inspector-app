@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import io
 import math
-import requests
+import base64
 from PIL import Image, ImageDraw
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -67,7 +67,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# כותרת ראשית מעודכנת (ללא לוגו/אזכור שפיר)
+# כותרת ראשית מעודכנת
 st.markdown("""
 <div class="main-header">
     <h1>🚦 מערכת פיקוח הנדסית, בקרה וכתב כמויות - תשתיות צמתים</h1>
@@ -85,7 +85,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 # ---------------------------------------------------------
-# פונקציות עזר לייצור רקע צומת 3 או 4 כיוונים
+# פונקציות עזר לייצור תמונת רקע והמרה ל-Base64
 # ---------------------------------------------------------
 def create_junction_background(junction_type="4_way"):
     img = Image.new("RGB", (900, 500), "#2c3e50")
@@ -117,6 +117,13 @@ def create_junction_background(junction_type="4_way"):
             draw.line([(x, 325), (x, 345)], fill="white", width=4)
             
     return img
+
+def pil_to_base64_data_uri(pil_img):
+    """המרה בטוחה של תמונה ל-Base64 Data URI עוקפת את הבאג ב-Streamlit"""
+    buffered = io.BytesIO()
+    pil_img.save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+    return f"data:image/png;base64,{img_str}"
 
 # ---------------------------------------------------------
 # כרטיסייה 1: שרטוט ובנק פנסים
@@ -185,20 +192,16 @@ with tab1:
     with col_t3:
         stroke_width = st.slider("עובי הקו:", 1, 15, 4)
 
-    # בנק פנסים ואלמנטים מוכנים להוספה לקנווס
-    st.markdown("**🚥 בנק פנסים נגררים מהיר:**")
-    btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
-    
-    if "canvas_objects" not in st.session_state:
-        st.session_state["canvas_objects"] = []
+    # המרת תמונת הרקע ל-Base64 Data URI כדי למנוע את הקריסה מול Streamlit
+    bg_uri = pil_to_base64_data_uri(bg_img) if bg_img is not None else None
 
     # קנווס אינטראקטיבי
     canvas_result = st_canvas(
         fill_color="rgba(0, 168, 135, 0.4)",
         stroke_width=stroke_width,
         stroke_color=stroke_color,
-        background_image=bg_img if bg_img is not None else None,
-        background_color="#FFFFFF" if bg_img is None else None,
+        background_image_url=bg_uri, # שימוש בפרמטר הבטוח background_image_url
+        background_color="#FFFFFF" if bg_uri is None else None,
         height=500,
         width=900,
         drawing_mode=drawing_mode,
@@ -307,10 +310,9 @@ with tab5:
         
         COLOR_PRIMARY = "0F2B48"
         COLOR_SECONDARY = "1E4D7B"
-        COLOR_ACCENT = "00A887"
+        COLOR_CARD_BG = "EBF2F8"
         COLOR_LIGHT_BG = "F4F7FA"
         COLOR_ZEBRA = "F9FBFD"
-        COLOR_CARD_BG = "EBF2F8"
         COLOR_BORDER = "D1D5DB"
         COLOR_SUCCESS_BG = "E6F4EA"
         COLOR_SUCCESS_FG = "137333"
