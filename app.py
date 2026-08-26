@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import io
 import math
+import base64
 from PIL import Image, ImageDraw
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -84,31 +85,24 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 # ---------------------------------------------------------
-# פונקציית עזר לייצור תמונת רקע
+# פונקציות עזר לרקע והמרה ל-Base64
 # ---------------------------------------------------------
 def create_junction_background(junction_type="4_way"):
     img = Image.new("RGB", (900, 500), "#2c3e50")
     draw = ImageDraw.Draw(img)
     
-    # אספלט ומדרכות
     if junction_type == "4_way":
-        # כביש אנכי
         draw.rectangle([350, 0, 550, 500], fill="#34495e")
-        # כביש אופקי
         draw.rectangle([0, 175, 900, 325], fill="#34495e")
-        # קווי מעבר חצייה
         for y in range(180, 320, 20):
             draw.line([(330, y), (350, y)], fill="white", width=4)
             draw.line([(550, y), (570, y)], fill="white", width=4)
         for x in range(355, 545, 20):
             draw.line([(x, 155), (x, 175)], fill="white", width=4)
             draw.line([(x, 325), (x, 345)], fill="white", width=4)
-    else:  # 3_way / T-Junction
-        # כביש אופקי
+    else:
         draw.rectangle([0, 175, 900, 325], fill="#34495e")
-        # כביש אנכי חיבור תחתון
         draw.rectangle([350, 175, 550, 500], fill="#34495e")
-        # מעברי חצייה
         for y in range(180, 320, 20):
             draw.line([(330, y), (350, y)], fill="white", width=4)
             draw.line([(550, y), (570, y)], fill="white", width=4)
@@ -116,6 +110,13 @@ def create_junction_background(junction_type="4_way"):
             draw.line([(x, 325), (x, 345)], fill="white", width=4)
             
     return img
+
+def pil_to_b64_url(pil_img):
+    """ממירה תמונת PIL ל-Base64 URL לעקיפת שגיאות תאימות גרסאות"""
+    buffered = io.BytesIO()
+    pil_img.save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+    return f"data:image/png;base64,{img_str}"
 
 # ---------------------------------------------------------
 # כרטיסייה 1: שרטוט ובנק פנסים
@@ -147,6 +148,7 @@ with tab1:
         ["מחולל צומת תלת-ממדי/דו-ממדי מובנה", "העלאת תוכנית / אורתופוטו (קובץ תמונה)"],
         horizontal=True
     )
+    
     bg_img = None
     if bg_option == "מחולל צומת תלת-ממדי/דו-ממדי מובנה":
         j_type = st.selectbox("בחר סוג צומת:", ["צומת 4 כיוונים (X)", "צומת 3 כיוונים (T)"])
@@ -160,6 +162,9 @@ with tab1:
             st.session_state["active_bg_img"] = bg_img
         elif "active_bg_img" in st.session_state:
             bg_img = st.session_state["active_bg_img"]
+
+    # המרה ל-Base64 למניעת השגיאה ב-Streamlit
+    bg_b64_url = pil_to_b64_url(bg_img) if bg_img is not None else None
 
     st.divider()
     st.subheader("🚥 בנק פנסים, תמרורים וסרגל כלי שרטוט")
@@ -183,13 +188,13 @@ with tab1:
     with col_t3:
         stroke_width = st.slider("עובי הקו:", 1, 15, 4)
 
-    # קנווס אינטראקטיבי - העברת תמונת הרקע הישירה ל-background_image
+    # עקפנו את השגיאה בעזרת העברת המחרוזת הישירה בלבד
     canvas_result = st_canvas(
         fill_color="rgba(0, 168, 135, 0.4)",
         stroke_width=stroke_width,
         stroke_color=stroke_color,
-        background_image=bg_img,
-        background_color="#FFFFFF" if bg_img is None else None,
+        background_image_url=bg_b64_url,
+        background_color="#FFFFFF" if bg_b64_url is None else None,
         height=500,
         width=900,
         drawing_mode=drawing_mode,
