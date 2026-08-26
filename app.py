@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import io
 import math
-import base64
 from PIL import Image, ImageDraw
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -85,7 +84,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 # ---------------------------------------------------------
-# פונקציות עזר לייצור תמונת רקע והמרה ל-Base64
+# פונקציית עזר לייצור תמונת רקע
 # ---------------------------------------------------------
 def create_junction_background(junction_type="4_way"):
     img = Image.new("RGB", (900, 500), "#2c3e50")
@@ -117,13 +116,6 @@ def create_junction_background(junction_type="4_way"):
             draw.line([(x, 325), (x, 345)], fill="white", width=4)
             
     return img
-
-def pil_to_base64_data_uri(pil_img):
-    """המרה בטוחה של תמונה ל-Base64 Data URI עוקפת את הבאג ב-Streamlit"""
-    buffered = io.BytesIO()
-    pil_img.save(buffered, format="PNG")
-    img_str = base64.b64encode(buffered.getvalue()).decode()
-    return f"data:image/png;base64,{img_str}"
 
 # ---------------------------------------------------------
 # כרטיסייה 1: שרטוט ובנק פנסים
@@ -191,16 +183,13 @@ with tab1:
     with col_t3:
         stroke_width = st.slider("עובי הקו:", 1, 15, 4)
 
-    # המרת תמונת הרקע ל-Base64 Data URI
-    bg_uri = pil_to_base64_data_uri(bg_img) if bg_img is not None else None
-
-    # קנווס אינטראקטיבי - תוקן הפרמטר ל-bg_image_url
+    # קנווס אינטראקטיבי - העברת תמונת הרקע הישירה ל-background_image
     canvas_result = st_canvas(
         fill_color="rgba(0, 168, 135, 0.4)",
         stroke_width=stroke_width,
         stroke_color=stroke_color,
-        bg_image_url=bg_uri,
-        background_color="#FFFFFF" if bg_uri is None else None,
+        background_image=bg_img,
+        background_color="#FFFFFF" if bg_img is None else None,
         height=500,
         width=900,
         drawing_mode=drawing_mode,
