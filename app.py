@@ -155,7 +155,6 @@ with tab1:
         ["מחולל צומת תלת-ממדי/דו-ממדי מובנה", "העלאת תוכנית / אורתופוטו (קובץ תמונה)"],
         horizontal=True
     )
-
     bg_img = None
     if bg_option == "מחולל צומת תלת-ממדי/דו-ממדי מובנה":
         j_type = st.selectbox("בחר סוג צומת:", ["צומת 4 כיוונים (X)", "צומת 3 כיוונים (T)"])
@@ -192,22 +191,21 @@ with tab1:
     with col_t3:
         stroke_width = st.slider("עובי הקו:", 1, 15, 4)
 
-    # המרת תמונת הרקע ל-Base64 Data URI כדי למנוע את הקריסה מול Streamlit
+    # המרת תמונת הרקע ל-Base64 Data URI
     bg_uri = pil_to_base64_data_uri(bg_img) if bg_img is not None else None
 
-    # קנווס אינטראקטיבי
+    # קנווס אינטראקטיבי - תוקן הפרמטר ל-bg_image_url
     canvas_result = st_canvas(
         fill_color="rgba(0, 168, 135, 0.4)",
         stroke_width=stroke_width,
         stroke_color=stroke_color,
-        background_image_url=bg_uri, # שימוש בפרמטר הבטוח background_image_url
+        bg_image_url=bg_uri,
         background_color="#FFFFFF" if bg_uri is None else None,
         height=500,
         width=900,
         drawing_mode=drawing_mode,
         key="canvas_junction_interactive",
     )
-
     if canvas_result.image_data is not None:
         st.session_state["canvas_sketch_image"] = canvas_result.image_data
 
@@ -224,14 +222,12 @@ with tab2:
         poles_metal_after = st.number_input("עמודי מתכת (אחרי)", min_value=0, value=6)
         poles_concrete_before = st.number_input("עמודי בטון (לפני)", min_value=0, value=2)
         poles_concrete_after = st.number_input("עמודי בטון (אחרי)", min_value=0, value=0)
-
     with col2:
         st.markdown("### 🚥 פנסי תנועה ופיקוד")
         car_lights_before = st.number_input("פנסי רכב (לפני)", min_value=0, value=6)
         car_lights_after = st.number_input("פנסי רכב (אחרי)", min_value=0, value=8)
         ped_lights_before = st.number_input("פנסי הולכי רגל (לפני)", min_value=0, value=4)
         ped_lights_after = st.number_input("פנסי הולכי רגל (אחרי)", min_value=0, value=6)
-
     with col3:
         st.markdown("### 🚲 בלינקרים ותשתיות אופניים")
         blinkers_before = st.number_input("בלינקרים / מהבהבים (לפני)", min_value=0, value=1)
@@ -251,7 +247,6 @@ with tab3:
         g_cabinet = st.checkbox("✅ הארקת ארון פיקוד מרכזי מחוברת ותקינה", value=True)
         g_continuity = st.checkbox("✅ בוצעה בדיקת רציפות הארקה (Continuity Test)", value=True)
         g_value = st.number_input("ערך הארקה שנמדד (אוהם Ω)", min_value=0.0, value=1.2, step=0.1)
-
     with col_g2:
         grounding_img = st.file_uploader("📷 צילום פתח עמוד / פס הארקה", type=["jpg", "png", "jpeg"])
         if grounding_img:
@@ -378,6 +373,7 @@ with tab5:
             ws1.cell(row=idx, column=1, value=lbl1).font = font_data_bold
             ws1.cell(row=idx, column=1).fill = fill_light_bg
             ws1.cell(row=idx, column=2, value=val1).font = font_data
+            
             ws1.cell(row=idx, column=4, value=lbl2).font = font_data_bold
             ws1.cell(row=idx, column=4).fill = fill_light_bg
             
@@ -389,7 +385,6 @@ with tab5:
             elif "לא אושר" in str(val2):
                 val2_cell.fill = PatternFill(start_color=COLOR_DANGER_BG, fill_type="solid")
                 val2_cell.font = Font(name="Arial", size=10, bold=True, color=COLOR_DANGER_FG)
-
             ws1.row_dimensions[idx].height = 22
 
         ws1.cell(row=8, column=1, value="דגשים והערות המפקח:").font = font_data_bold
@@ -398,7 +393,7 @@ with tab5:
 
         # כרטיסי כמויות
         ws1.cell(row=10, column=1, value="🔌 אומדן כמויות כבלים מתוכנן").font = font_section_header
-
+        
         ws1.merge_cells("A11:B11")
         ws1.merge_cells("A12:B12")
         ws1.cell(row=11, column=1, value="כבל פיקוד רמזורים כבד").font = font_metric_lbl
@@ -426,7 +421,6 @@ with tab5:
         
         headers = ["תיאור הרכיב / התשתית", "כמות מצב קיים (לפני)", "כמות מתוכננת (אחרי)", "שינוי (דלתא Δ)", "יחידת מידה", "הערות הנדסיות"]
         ws1.row_dimensions[15].height = 26
-
         for col_idx, text in enumerate(headers, start=1):
             cell = ws1.cell(row=15, column=col_idx, value=text)
             cell.fill = fill_secondary
@@ -459,7 +453,6 @@ with tab5:
                     cell.alignment = align_center
                 else:
                     cell.alignment = align_right
-
             c4.font = font_data_bold
 
         total_row = start_row + len(df_boq)
@@ -468,7 +461,7 @@ with tab5:
         ws1.cell(row=total_row, column=2, value=f"=SUM(B{start_row}:B{total_row-1})").font = font_data_bold
         ws1.cell(row=total_row, column=3, value=f"=SUM(C{start_row}:C{total_row-1})").font = font_data_bold
         ws1.cell(row=total_row, column=4, value=f"=SUM(D{start_row}:D{total_row-1})").font = font_data_bold
-
+        
         for c_idx in range(1, 7):
             cell = ws1.cell(row=total_row, column=c_idx)
             cell.border = border_total
@@ -518,9 +511,8 @@ with tab5:
             else:
                 stat_cell.fill = PatternFill(start_color=COLOR_DANGER_BG, fill_type="solid")
                 stat_cell.font = Font(name="Arial", size=10, bold=True, color=COLOR_DANGER_FG)
-
+            
             ws2.cell(row=idx, column=5, value=comm).alignment = align_right
-
             for c in range(1, 6):
                 ws2.cell(row=idx, column=c).border = border_all
 
