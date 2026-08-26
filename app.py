@@ -1,16 +1,142 @@
-/* ==========================================================
-   סקיצת צומת + כתב כמויות
-   אפליקציה עצמאית (ללא תלות בשרת) לסימון אלמנטי תנועה
-   על גבי סקיצת צומת X / T, וחישוב כתב כמויות אוטומטי.
-   ========================================================== */
+import streamlit as st
+import streamlit.components.v1 as components
 
+st.set_page_config(layout="wide", page_title="סקיצת צומת + כתב כמויות")
+
+# HTML/JS Code Wrapper
+html_code = """
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8">
+<style>
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    margin: 0;
+    padding: 15px;
+    background-color: #f4f6f8;
+    color: #333;
+  }
+  .app-container {
+    display: flex;
+    gap: 20px;
+  }
+  .palette {
+    width: 220px;
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  .palette h3 { margin-top: 0; }
+  .palette-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    margin-bottom: 8px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    cursor: grab;
+    user-select: none;
+  }
+  .palette-item svg { width: 30px; height: 30px; }
+  .canvas-area {
+    flex: 1;
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  .controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    align-items: center;
+  }
+  .junction-toggle__btn {
+    padding: 6px 16px;
+    border: 1px solid #ccc;
+    background: #fff;
+    cursor: pointer;
+  }
+  .junction-toggle__btn.is-active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+  }
+  svg#sketchSvg {
+    width: 100%;
+    height: 500px;
+    background-color: #eef2f5;
+    border: 1px solid #ccc;
+  }
+  .grid-line { stroke: #e0e0e0; stroke-width: 1; }
+  .road { fill: #4a5568; }
+  .lane-dash { stroke: #ffffff; stroke-width: 2; stroke-dasharray: 8 8; }
+  .placed-el { cursor: move; }
+  .el-label { font-size: 11px; fill: #1a202c; text-anchor: middle; font-weight: bold; }
+  .el-remove { fill: #ef4444; cursor: pointer; }
+  .el-remove-x { fill: white; font-size: 12px; font-weight: bold; text-anchor: middle; cursor: pointer; pointer-events: none; }
+  
+  .boq-section {
+    margin-top: 20px;
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+  th { background-color: #f2f2f2; }
+  .zero { color: #ccc; }
+  
+  @media print {
+    .palette, .controls, .no-print { display: none !important; }
+    .canvas-area, .boq-section { box-shadow: none; border: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <div id="junctionToggle">
+    <button class="junction-toggle__btn is-active" data-shape="X">צומת X</button>
+    <button class="junction-toggle__btn" data-shape="T">צומת T</button>
+  </div>
+  <div id="canvasCount">0 אלמנטים בסקיצה</div>
+  <div>
+    <button id="clearCanvas">ניקוי סקיצה</button>
+    <button id="generateReport">הדפסת דוח / PDF</button>
+  </div>
+</div>
+
+<div class="app-container">
+  <div class="palette" id="paletteItems"></div>
+  <div class="canvas-area">
+    <svg id="sketchSvg" viewBox="0 0 800 600"></svg>
+  </div>
+</div>
+
+<div class="boq-section">
+  <h3>כתב כמויות אוטומטי</h3>
+  <table id="boqTable">
+    <thead>
+      <tr>
+        <th>אלמנט</th>
+        <th>הוספה</th>
+        <th>הסרה</th>
+        <th>פירוק</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-/* ----------------------------------------------------------
-   1. קטלוג אלמנטים
-   כל אלמנט: מזהה, תווית בעברית, וציור SVG (כפונקציה שמחזירה
-   מחרוזת <g> פנימית, סביב נקודת (0,0) באורך/רוחב של כ-40 יח').
-   ---------------------------------------------------------- */
 const ELEMENT_TYPES = [
   {
     id: "trafficLight",
@@ -89,39 +215,25 @@ const ACTIONS = ["add", "remove", "dismantle"];
 const ACTION_LABEL = { add: "הוספה", remove: "הסרה", dismantle: "פירוק" };
 const ACTION_COLOR = { add: "#2f9e8f", remove: "#d8555a", dismantle: "#d99a2b" };
 
-/* ----------------------------------------------------------
-   2. מצב האפליקציה
-   ---------------------------------------------------------- */
 const state = {
-  shape: "X",              // 'X' | 'T'
-  elements: [],            // {id, type, x, y, action}
+  shape: "X",
+  elements: [],
   nextId: 1
 };
 
-/* ----------------------------------------------------------
-   3. אתחול
-   ---------------------------------------------------------- */
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("siteDate").valueAsDate = new Date();
   renderPalette();
   renderJunctionBase();
   bindJunctionToggle();
   bindCanvasDropTarget();
   bindClearButton();
-  bindCableInputs();
   bindReportButton();
   renderBoqTable();
 });
 
-/* ----------------------------------------------------------
-   4. בנק אלמנטים (palette)
-   ---------------------------------------------------------- */
 function renderPalette() {
   const wrap = document.getElementById("paletteItems");
-  wrap.innerHTML = "";
-  const heading = document.createElement("h3");
-  heading.textContent = "אלמנטים";
-  wrap.appendChild(heading);
+  wrap.innerHTML = "<h3>אלמנטים</h3>";
 
   ELEMENT_TYPES.forEach(type => {
     const item = document.createElement("div");
@@ -140,9 +252,6 @@ function renderPalette() {
   });
 }
 
-/* ----------------------------------------------------------
-   5. בחירת צורת צומת (X / T)
-   ---------------------------------------------------------- */
 function bindJunctionToggle() {
   const toggle = document.getElementById("junctionToggle");
   toggle.querySelectorAll(".junction-toggle__btn").forEach(btn => {
@@ -155,12 +264,8 @@ function bindJunctionToggle() {
   });
 }
 
-/* ----------------------------------------------------------
-   6. ציור בסיס הצומת (כביש + קווי נתיב) לפי צורה
-   ---------------------------------------------------------- */
 function renderJunctionBase() {
   const svg = document.getElementById("sketchSvg");
-  // מסירים רק את שכבת הרקע (base-layer), שומרים את האלמנטים שהוצבו
   let base = svg.querySelector("#baseLayer");
   if (base) base.remove();
 
@@ -168,7 +273,6 @@ function renderJunctionBase() {
   base.setAttribute("id", "baseLayer");
   svg.insertBefore(base, svg.firstChild);
 
-  // רשת עזר (blueprint grid)
   for (let x = 0; x <= 800; x += 40) {
     base.appendChild(line(x, 0, x, 600, "grid-line"));
   }
@@ -182,13 +286,11 @@ function renderJunctionBase() {
   if (state.shape === "X") {
     base.appendChild(rect(cx - ROAD_W/2, 0, ROAD_W, 600, "road"));
     base.appendChild(rect(0, cy - ROAD_W/2, 800, ROAD_W, "road"));
-    // dashed center lines - 4 approaches
     base.appendChild(line(cx, 0, cx, cy - ROAD_W/2, "lane-dash"));
     base.appendChild(line(cx, cy + ROAD_W/2, cx, 600, "lane-dash"));
     base.appendChild(line(0, cy, cx - ROAD_W/2, cy, "lane-dash"));
     base.appendChild(line(cx + ROAD_W/2, cy, 800, cy, "lane-dash"));
   } else {
-    // T: כביש אופקי מלא + כביש אנכי רק מלמעלה עד קו הכביש האופקי
     base.appendChild(rect(0, cy - ROAD_W/2, 800, ROAD_W, "road"));
     base.appendChild(rect(cx - ROAD_W/2, 0, ROAD_W, cy + ROAD_W/2, "road"));
     base.appendChild(line(cx, 0, cx, cy - ROAD_W/2, "lane-dash"));
@@ -212,9 +314,6 @@ function rect(x,y,w,h,cls){
   return el;
 }
 
-/* ----------------------------------------------------------
-   7. גרירת אלמנט מהבנק אל הסקיצה
-   ---------------------------------------------------------- */
 function bindCanvasDropTarget() {
   const svg = document.getElementById("sketchSvg");
   svg.addEventListener("dragover", e => e.preventDefault());
@@ -243,10 +342,6 @@ function addElement(typeId, x, y) {
   updateCanvasCount();
 }
 
-/* ----------------------------------------------------------
-   8. ציור אלמנט שהוצב על הסקיצה + אינטראקציה
-      (לחיצה = מחזור פעולה, גרירה = הזזה, X = מחיקה)
-   ---------------------------------------------------------- */
 function renderPlacedElement(elData) {
   const svg = document.getElementById("sketchSvg");
   const type = ELEMENT_TYPES.find(t => t.id === elData.type);
@@ -262,7 +357,6 @@ function renderPlacedElement(elData) {
   ring.setAttribute("fill", "none");
   ring.setAttribute("stroke", ACTION_COLOR[elData.action]);
   ring.setAttribute("stroke-width", 2.5);
-  ring.setAttribute("class", "action-ring");
   g.appendChild(ring);
 
   const icon = document.createElementNS(SVG_NS, "g");
@@ -275,32 +369,26 @@ function renderPlacedElement(elData) {
   label.textContent = `${type.label} · ${ACTION_LABEL[elData.action]}`;
   g.appendChild(label);
 
-  // כפתור מחיקה (X קטן)
   const delCircle = document.createElementNS(SVG_NS, "circle");
   delCircle.setAttribute("class", "el-remove");
   delCircle.setAttribute("cx", 16); delCircle.setAttribute("cy", -22); delCircle.setAttribute("r", 7);
+  
   const delX = document.createElementNS(SVG_NS, "text");
   delX.setAttribute("class", "el-remove-x");
-  delX.setAttribute("x", 16); delX.setAttribute("y", -19.5);
+  delX.setAttribute("x", 16); delX.setAttribute("y", -18);
   delX.textContent = "×";
+  
   g.appendChild(delCircle);
   g.appendChild(delX);
 
-  delCircle.addEventListener("click", (e) => {
-    e.stopPropagation();
-    removeElement(elData.id);
-  });
-  delX.addEventListener("click", (e) => {
-    e.stopPropagation();
-    removeElement(elData.id);
-  });
+  delCircle.addEventListener("click", (e) => { e.stopPropagation(); removeElement(elData.id); });
+  delX.addEventListener("click", (e) => { e.stopPropagation(); removeElement(elData.id); });
 
   icon.addEventListener("click", (e) => {
     e.stopPropagation();
     cycleAction(elData.id);
   });
 
-  // גרירה להזזה בתוך הסקיצה
   let dragging = false;
   g.addEventListener("pointerdown", (e) => {
     if (e.target === delCircle || e.target === delX) return;
@@ -347,9 +435,6 @@ function updateCanvasCount() {
   document.getElementById("canvasCount").textContent = `${state.elements.length} אלמנטים בסקיצה`;
 }
 
-/* ----------------------------------------------------------
-   9. ניקוי סקיצה
-   ---------------------------------------------------------- */
 function bindClearButton() {
   document.getElementById("clearCanvas").addEventListener("click", () => {
     if (state.elements.length && !confirm("לנקות את כל האלמנטים מהסקיצה?")) return;
@@ -360,16 +445,12 @@ function bindClearButton() {
   });
 }
 
-/* ----------------------------------------------------------
-   10. כתב כמויות — חישוב אוטומטי מתוך האלמנטים בסקיצה
-   ---------------------------------------------------------- */
 function computeBoq() {
-  const rows = ELEMENT_TYPES.map(type => {
+  return ELEMENT_TYPES.map(type => {
     const counts = { add: 0, remove: 0, dismantle: 0 };
     state.elements.filter(e => e.type === type.id).forEach(e => counts[e.action]++);
     return { label: type.label, ...counts };
   });
-  return rows;
 }
 
 function renderBoqTable() {
@@ -389,53 +470,15 @@ function renderBoqTable() {
   });
 }
 
-function bindCableInputs() {
-  // לא נדרש לוגיקה מיוחדת — הערכים נקראים ישירות בעת הפקת הדוח
-}
-
-/* ----------------------------------------------------------
-   11. הפקת דוח (תצוגת הדפסה / שמירה כ-PDF דרך הדפדפן)
-   ---------------------------------------------------------- */
 function bindReportButton() {
   document.getElementById("generateReport").addEventListener("click", () => {
-    fillReportView();
     window.print();
   });
 }
+</script>
+</body>
+</html>
+"""
 
-function fillReportView() {
-  document.getElementById("r_siteName").textContent = document.getElementById("siteName").value || "—";
-  document.getElementById("r_inspector").textContent = document.getElementById("inspectorName").value || "—";
-  document.getElementById("r_date").textContent = document.getElementById("siteDate").value || "—";
-  document.getElementById("r_shape").textContent = state.shape === "X" ? "צומת X (4 גישות)" : "צומת T (3 גישות)";
-
-  // שיבוט הסקיצה כפי שהיא (כולל אלמנטים שהוצבו)
-  const sketchHost = document.getElementById("r_sketch");
-  sketchHost.innerHTML = "";
-  const svgClone = document.getElementById("sketchSvg").cloneNode(true);
-  svgClone.querySelectorAll(".el-remove, .el-remove-x").forEach(n => n.remove());
-  sketchHost.appendChild(svgClone);
-
-  // טבלת כתב כמויות
-  const tbody = document.querySelector("#r_boqTable tbody");
-  tbody.innerHTML = "";
-  computeBoq().forEach(row => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${row.label}</td><td>${row.add}</td><td>${row.remove}</td><td>${row.dismantle}</td>`;
-    tbody.appendChild(tr);
-  });
-
-  document.getElementById("r_cableOverhead").textContent =
-    (document.getElementById("cableOverhead").value || "0") + " מטר";
-  document.getElementById("r_cableUnderground").textContent =
-    (document.getElementById("cableUnderground").value || "0") + " מטר";
-
-  const notes = document.getElementById("boqNotes").value.trim();
-  const notesSection = document.getElementById("r_notesSection");
-  if (notes) {
-    document.getElementById("r_notes").textContent = notes;
-    notesSection.style.display = "";
-  } else {
-    notesSection.style.display = "none";
-  }
-}
+# Render in Streamlit
+components.html(html_code, height=900, scrolling=True)
