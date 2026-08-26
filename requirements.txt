@@ -7,3 +7,8 @@ folium
 streamlit-folium
 geopy
 streamlit-drawable-canvas
+streamlit>=1.60
+streamlit-drawable-canvas-fix>=0.9.7
+pandas
+Pillow
+openpyxl
