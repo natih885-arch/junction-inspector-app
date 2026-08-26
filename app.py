@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+import base64
 from PIL import Image, ImageDraw
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -79,8 +80,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 # ---------------------------------------------------------
-# בנק האלמנטים (פנסים / עמודים / ציוד) - כל אלמנט מקבל צבע קבוע
-# כדי שנוכל לזהות אוטומטית מה הוצב בסקיצה ולתרגם את זה לכתב כמויות
+# בנק האלמנטים
 # ---------------------------------------------------------
 ELEMENT_BANK = {
     "pole_metal":     {"label": "עמוד מתכת",        "emoji": "🗼", "color": "#7f8c8d"},
@@ -93,7 +93,6 @@ ELEMENT_BANK = {
     "cabinet":        {"label": "ארון פיקוד",        "emoji": "🗄️", "color": "#2c3e50"},
 }
 
-# מיפוי בין אלמנט בבנק לבין שדה "אחרי" בכתב הכמויות (טאב 2)
 BANK_TO_AFTER_KEY = {
     "pole_metal": "poles_metal_after",
     "pole_concrete": "poles_concrete_after",
@@ -105,8 +104,6 @@ BANK_TO_AFTER_KEY = {
     "cabinet": "cabinets_after",
 }
 
-# ערכי ברירת מחדל לכל שדות המספרים (מוגדרים פעם אחת ב-session_state
-# כדי שנוכל לעדכן אותם תכנותית מהסקיצה בלי להתנגש עם ווידג'טים)
 DEFAULTS = {
     "poles_metal_before": 4, "poles_metal_after": 6,
     "poles_concrete_before": 2, "poles_concrete_after": 0,
@@ -117,11 +114,11 @@ DEFAULTS = {
     "bike_lights_before": 0, "bike_lights_after": 2,
     "signs_before": 3, "signs_after": 3,
 }
+
 for _k, _v in DEFAULTS.items():
     st.session_state.setdefault(_k, _v)
 
 st.session_state.setdefault("canvas_reset_counter", 0)
-
 
 def create_junction_background(junction_type="4_way"):
     img = Image.new("RGB", (900, 500), "#2c3e50")
@@ -145,9 +142,14 @@ def create_junction_background(junction_type="4_way"):
             draw.line([(x, 325), (x, 345)], fill="white", width=4)
     return img
 
+def pil_to_base64(img):
+    """ממיר תמונת PIL למחרוזת Base64 כדי למנוע את השגיאה ב-streamlit_drawable_canvas"""
+    buffered = io.BytesIO()
+    img.save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+    return f"data:image/png;base64,{img_str}"
 
 def count_canvas_elements(json_data):
-    """סופר כמה אלמנטים מכל סוג מוצבים כרגע בסקיצה, לפי צבע המילוי שלהם."""
     counts = {k: 0 for k in ELEMENT_BANK}
     if not json_data:
         return counts
@@ -157,7 +159,6 @@ def count_canvas_elements(json_data):
         if fill in color_to_key:
             counts[color_to_key[fill]] += 1
     return counts
-
 
 # ---------------------------------------------------------
 # כרטיסייה 1: שרטוט ובנק פנסים
@@ -169,6 +170,7 @@ with tab1:
         junction_name = st.text_input("שם / מספר הצומת והפרויקט", "אלנבי - מנחם בגין (תוואי קו סגול)")
         inspector_name = st.text_input("שם המפקח האחראי", "נתנאל הררי - מפקח תשתיות מוסמך")
         contractor_name = st.text_input("קבלן מבצע / חברה מבצעת", "חברה מבצעת - אגף תשתיות")
+
     with col_b:
         inspection_date = st.date_input("תאריך סיור הפיקוח")
         project_phase = st.selectbox("שלב הסדר התנועה (תמ''ת/תמ''ק)", [
@@ -178,6 +180,7 @@ with tab1:
         ])
         cabling_mode = st.radio("סוג כבילה מרכזי בתוואי",
                                  ["כבילה תחתית (שרוולים/צנרת באדמה)", "כבילה עילית (זמנית על מתוחים)"])
+
     with col_c:
         general_notes = st.text_area(
             "הערות הנדסיות ודגשי שטח",
@@ -187,7 +190,6 @@ with tab1:
 
     st.divider()
     st.subheader("🗺️ בחירת בסיס תרשים הצומת")
-
     bg_option = st.radio(
         "בחר מקור לרקע הצומת:",
         ["מחולל צומת תלת-ממדי/דו-ממדי מובנה", "העלאת תוכנית / אורתופוטו (קובץ תמונה)"],
@@ -228,7 +230,6 @@ with tab1:
     )
 
     col_t1, col_t2, col_t3 = st.columns(3)
-
     selected_elem_key = None
     if mode_choice == "➕ הוספת אלמנט מבנק הציוד":
         with col_t1:
@@ -269,21 +270,23 @@ with tab1:
             st.session_state["canvas_reset_counter"] += 1
             st.session_state.pop("canvas_sketch_image", None)
 
-    # מקרא צבעים לבנק האלמנטים
     legend_html = "".join(
         f'<span class="legend-chip" style="background:{v["color"]}">{v["emoji"]} {v["label"]}</span>'
         for v in ELEMENT_BANK.values()
     )
     st.markdown(legend_html, unsafe_allow_html=True)
 
-    canvas_key = f"canvas_junction_interactive_{st.session_state['canvas_reset_counter']}"
+    # המרה ל-Base64 כדי למנוע את שגיאת ה-AttributeError
+    bg_image_url = pil_to_base64(bg_img) if bg_img is not None else ""
 
+    canvas_key = f"canvas_junction_interactive_{st.session_state['canvas_reset_counter']}"
     canvas_result = st_canvas(
         fill_color=fill_color,
         stroke_width=stroke_width,
         stroke_color=stroke_color,
-        background_image=bg_img,
+        background_image=None,
         background_color="#FFFFFF" if bg_img is None else "",
+        background_image_url=bg_image_url if bg_img is not None else None,
         height=500,
         width=900,
         drawing_mode=drawing_mode,
@@ -314,8 +317,8 @@ with tab1:
 with tab2:
     st.subheader("🔢 תיעוד וספירת ציוד בצומת (לפני / אחרי)")
     st.caption("ניתן למלא ידנית, או להשתמש בכפתור 'עדכן את כתב הכמויות' בטאב הסקיצה כדי למלא אוטומטית את עמודת 'אחרי'.")
-    col1, col2, col3 = st.columns(3)
 
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown("### 🏛️ עמודים, ארונות ותשתיות")
         poles_metal_before = st.number_input("עמודי מתכת (לפני)", min_value=0, key="poles_metal_before")
@@ -352,6 +355,7 @@ with tab3:
         g_cabinet = st.checkbox("✅ הארקת ארון פיקוד מרכזי מחוברת ותקינה", value=True)
         g_continuity = st.checkbox("✅ בוצעה בדיקת רציפות הארקה (Continuity Test)", value=True)
         g_value = st.number_input("ערך הארקה שנמדד (אוהם Ω)", min_value=0.0, value=1.2, step=0.1)
+
     with col_g2:
         grounding_img = st.file_uploader("📷 צילום פתח עמוד / פס הארקה", type=["jpg", "png", "jpeg"])
         if grounding_img:
@@ -369,7 +373,6 @@ with tab3:
 # ---------------------------------------------------------
 with tab4:
     st.subheader("📊 כתב כמויות הנדסי וניתוח שינויים (Δ)")
-
     boq_data = [
         {"תיאור הרכיב": "עמודי מתכת (זרוע/ישר)", "לפני": poles_metal_before, "אחרי": poles_metal_after},
         {"תיאור הרכיב": "עמודי בטון", "לפני": poles_concrete_before, "אחרי": poles_concrete_after},
@@ -380,9 +383,10 @@ with tab4:
         {"תיאור הרכיב": "פנסי אופניים", "לפני": bike_lights_before, "אחרי": bike_lights_after},
         {"תיאור הרכיב": "תמרורים", "לפני": signs_before, "אחרי": signs_after},
     ]
+
     df_boq = pd.DataFrame(boq_data)
     df_boq["שינוי (דלתא Δ)"] = df_boq["אחרי"] - df_boq["לפני"]
-    st.dataframe(df_boq, width="stretch")
+    st.dataframe(df_boq, use_container_width=True)
 
     added_car_lights = max(0, car_lights_after - car_lights_before)
     added_ped_lights = max(0, ped_lights_after - ped_lights_before)
@@ -459,21 +463,23 @@ with tab5:
         title_cell.font = font_main_title
         title_cell.fill = fill_primary
         title_cell.alignment = align_center
+
         sub_cell.value = f"פרויקט / צומת: {junction_name} | תאריך סיור: {inspection_date}"
         sub_cell.font = font_sub_title
         sub_cell.fill = fill_primary
         sub_cell.alignment = align_center
+
         ws1.row_dimensions[1].height = 32
         ws1.row_dimensions[2].height = 20
 
         ws1.cell(row=4, column=1, value="📌 פרטי הסיור והפיקוח").font = font_section_header
-
         info_data = [
             ("שם הצומת והפרויקט:", junction_name, "מפקח אחראי:", inspector_name),
             ("חברה מבצעת:", contractor_name, "שלב הסדר תנועה:", project_phase),
             ("סוג כבילה מרכזי:", cabling_mode, "סטטוס בטיחות הארקה:",
              "מאושר ותקין" if is_grounding_approved else "❌ לא אושר"),
         ]
+
         for idx, (lbl1, val1, lbl2, val2) in enumerate(info_data, start=5):
             ws1.cell(row=idx, column=1, value=lbl1).font = font_data_bold
             ws1.cell(row=idx, column=1).fill = fill_light_bg
@@ -499,10 +505,12 @@ with tab5:
         ws1.merge_cells("A12:B12")
         ws1.cell(row=11, column=1, value="כבל פיקוד רמזורים כבד").font = font_metric_lbl
         ws1.cell(row=12, column=1, value=f"{cable_heavy} מ'").font = font_metric_num
+
         ws1.merge_cells("C11:D11")
         ws1.merge_cells("C12:D12")
         ws1.cell(row=11, column=3, value="כבל פיקוד הולכי רגל").font = font_metric_lbl
         ws1.cell(row=12, column=3, value=f"{cable_light} מ'").font = font_metric_num
+
         ws1.merge_cells("E11:F11")
         ws1.merge_cells("E12:F12")
         ws1.cell(row=11, column=5, value="כבל הארקה תקני").font = font_metric_lbl
@@ -537,8 +545,8 @@ with tab5:
             ws1.cell(row=current_row, column=5, value="יחידות")
             ws1.cell(row=current_row, column=6,
                      value="תקין ומאושר" if row["אחרי"] >= row["לפני"] else "פורק מהשטח")
-
             row_fill = fill_zebra if r_idx % 2 == 1 else PatternFill(fill_type=None)
+
             for c_idx in range(1, 7):
                 cell = ws1.cell(row=current_row, column=c_idx)
                 cell.font = font_data
@@ -557,6 +565,7 @@ with tab5:
         ws1.cell(row=total_row, column=2, value=f"=SUM(B{start_row}:B{total_row - 1})").font = font_data_bold
         ws1.cell(row=total_row, column=3, value=f"=SUM(C{start_row}:C{total_row - 1})").font = font_data_bold
         ws1.cell(row=total_row, column=4, value=f"=SUM(D{start_row}:D{total_row - 1})").font = font_data_bold
+
         for c_idx in range(1, 7):
             cell = ws1.cell(row=total_row, column=c_idx)
             cell.border = border_total
@@ -593,6 +602,7 @@ with tab5:
             ("4", "מדידת התנגדות הארקה לקו (תקן החשמל)", f"{g_value} Ω",
              "מאושר" if g_value <= 5.0 else "חריגה", "ערך תקני מתחת ל-5 אוהם"),
         ]
+
         for idx, (num, desc, val, stat, comm) in enumerate(g_checks, start=4):
             ws2.row_dimensions[idx].height = 22
             ws2.cell(row=idx, column=1, value=num).alignment = align_center
@@ -638,12 +648,12 @@ with tab5:
             img_byte_arr = io.BytesIO()
             final_combined_img.save(img_byte_arr, format='PNG')
             img_byte_arr.seek(0)
+
             excel_img = OpenpyxlImage(img_byte_arr)
             excel_img.width = 820
             excel_img.height = 455
             ws3.add_image(excel_img, "B3")
 
-            # טבלת ספירת אלמנטים מתוך הסקיצה בפועל
             sk_counts = st.session_state.get("sketch_counts", {})
             ws3.cell(row=30, column=2, value="ספירת אלמנטים שזוהו בסקיצה בפועל").font = font_section_header
             row_cursor = 31
@@ -670,7 +680,6 @@ with tab5:
         return output.getvalue()
 
     excel_file = generate_excel_report()
-
     st.markdown("### 📄 הורדת הקובץ המוגמר")
     st.download_button(
         label="📥 הורד דוח Excel הנדסי מעוצב",
