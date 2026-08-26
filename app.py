@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(layout="wide", page_title="סקיצת צומת + כתב כמויות - פיקוח רק\"ל")
+st.set_page_config(layout="wide", page_title="סקיצת צומת + כתב כמויות")
 
 html_code = """
 <!DOCTYPE html>
@@ -17,34 +17,89 @@ html_code = """
     background-color: #f4f6f8;
     color: #333;
   }
+  
+  /* טופס פרטי אתר */
+  .site-details {
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
+    min-width: 180px;
+  }
+  .form-group label { font-size: 13px; font-weight: bold; }
+  .form-group input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; }
+
+  .controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    align-items: center;
+    background: #fff;
+    padding: 10px 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  .junction-toggle__btn {
+    padding: 6px 16px;
+    border: 1px solid #ccc;
+    background: #fff;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: bold;
+  }
+  .junction-toggle__btn.is-active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+  }
+  .btn-action {
+    padding: 6px 14px;
+    border: 1px solid #ccc;
+    background: #fff;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  .btn-primary { background: #28a745; color: white; border-color: #28a745; font-weight: bold; }
+
   .app-container {
     display: flex;
     gap: 15px;
   }
   .palette {
-    width: 240px;
+    width: 220px;
     background: #fff;
-    padding: 12px;
+    padding: 15px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    max-height: 800px;
+    max-height: 600px;
     overflow-y: auto;
   }
-  .palette h3, .palette h4 { margin: 8px 0 4px 0; font-size: 14px; color: #1e293b; border-bottom: 1px solid #e2e8f0; pb: 4px; }
+  .palette h3 { margin-top: 0; margin-bottom: 10px; font-size: 16px; }
   .palette-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px;
-    margin-bottom: 6px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    gap: 10px;
+    padding: 8px;
+    margin-bottom: 8px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
     border-radius: 6px;
     cursor: grab;
     user-select: none;
     font-size: 13px;
   }
-  .palette-item svg { width: 26px; height: 26px; flex-shrink: 0; }
+  .palette-item svg { width: 30px; height: 30px; flex-shrink: 0; }
+  
   .canvas-area {
     flex: 1;
     background: #fff;
@@ -52,116 +107,76 @@ html_code = """
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   }
-  .controls {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 12px;
-    align-items: center;
-    background: #fff;
-    padding: 10px 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  }
-  .junction-toggle__btn {
-    padding: 6px 14px;
-    border: 1px solid #cbd5e1;
-    background: #fff;
-    cursor: pointer;
-    border-radius: 4px;
-    font-weight: bold;
-  }
-  .junction-toggle__btn.is-active {
-    background: #2563eb;
-    color: white;
-    border-color: #2563eb;
-  }
-  .btn-action {
-    padding: 6px 12px;
-    border: 1px solid #cbd5e1;
-    background: #f8fafc;
-    cursor: pointer;
-    border-radius: 4px;
-    font-weight: 500;
-  }
-  .btn-primary { background: #16a34a; color: white; border-color: #16a34a; }
-  
   svg#sketchSvg {
     width: 100%;
     height: 520px;
-    background-color: #334155;
-    border: 1px solid #94a3b8;
-    border-radius: 6px;
+    background-color: #eef2f5;
+    border: 1px solid #ccc;
+    border-radius: 4px;
   }
-  .grid-line { stroke: #475569; stroke-width: 0.8; stroke-dasharray: 2 4; }
-  .road { fill: #1e293b; }
-  .lane-dash { stroke: #f8fafc; stroke-width: 2; stroke-dasharray: 8 8; }
+  .grid-line { stroke: #e0e0e0; stroke-width: 1; }
+  .road { fill: #4a5568; }
+  .lane-dash { stroke: #ffffff; stroke-width: 2; stroke-dasharray: 8 8; }
   .placed-el { cursor: move; }
-  .el-label { font-size: 10px; fill: #ffffff; text-anchor: middle; font-weight: bold; text-shadow: 0 0 3px #000; }
+  .el-label { font-size: 11px; fill: #1a202c; text-anchor: middle; font-weight: bold; }
   .el-remove { fill: #ef4444; cursor: pointer; }
-  .el-remove-x { fill: white; font-size: 11px; font-weight: bold; text-anchor: middle; cursor: pointer; pointer-events: none; }
+  .el-remove-x { fill: white; font-size: 12px; font-weight: bold; text-anchor: middle; cursor: pointer; pointer-events: none; }
   
-  .boq-section, .photos-section {
+  .boq-section {
     margin-top: 15px;
     background: #fff;
     padding: 15px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   }
-  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-  th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: center; }
-  th { background-color: #f1f5f9; color: #0f172a; }
-  .zero { color: #94a3b8; }
+  .boq-section h3 { margin-top: 0; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+  th { background-color: #f2f2f2; }
+  .zero { color: #ccc; }
   
-  .photo-inputs {
-    display: flex;
-    gap: 20px;
-    margin-top: 10px;
-  }
-  .photo-box {
-    flex: 1;
-    border: 2px dashed #cbd5e1;
-    padding: 12px;
-    border-radius: 6px;
-    text-align: center;
-    background: #f8fafc;
-  }
-  .photo-box img {
-    max-width: 100%;
-    max-height: 180px;
-    margin-top: 8px;
-    border-radius: 4px;
-    display: none;
-  }
   .cables-inputs {
     display: flex;
-    gap: 15px;
-    margin-top: 10px;
-    background: #f8fafc;
+    gap: 20px;
+    margin-bottom: 15px;
+    background: #f8f9fa;
     padding: 10px;
     border-radius: 6px;
   }
-  .cables-inputs label { font-size: 13px; font-weight: bold; }
-  .cables-inputs input { width: 80px; padding: 4px; text-align: center; }
 
   @media print {
-    .palette, .controls, .no-print, input[type="file"] { display: none !important; }
-    .canvas-area, .boq-section, .photos-section { box-shadow: none; border: none; padding: 0; }
+    .palette, .controls, .no-print { display: none !important; }
+    .canvas-area, .boq-section, .site-details { box-shadow: none; border: none; }
     body { background: white; }
-    svg#sketchSvg { height: 400px; }
   }
 </style>
 </head>
 <body>
 
+<div class="site-details">
+  <div class="form-group">
+    <label>שם האתר / צומת:</label>
+    <input type="text" id="siteName" placeholder="לדוגמה: צומת הרצל-ז'בוטינסקי">
+  </div>
+  <div class="form-group">
+    <label>שם המפקח:</label>
+    <input type="text" id="inspectorName" placeholder="שם המפקח">
+  </div>
+  <div class="form-group">
+    <label>תאריך:</label>
+    <input type="date" id="siteDate">
+  </div>
+</div>
+
 <div class="controls">
   <div id="junctionToggle">
-    <button class="junction-toggle__btn is-active" data-shape="X">צומת X (4 גישות)</button>
-    <button class="junction-toggle__btn" data-shape="T">צומת T (3 גישות)</button>
+    <button class="junction-toggle__btn is-active" data-shape="X">צומת X</button>
+    <button class="junction-toggle__btn" data-shape="T">צומת T</button>
   </div>
-  <div id="canvasCount" style="font-weight: bold; color: #475569;">0 אלמנטים בסקיצה</div>
+  <div id="canvasCount">0 אלמנטים בסקיצה</div>
   <div>
     <button id="clearCanvas" class="btn-action">ניקוי סקיצה</button>
-    <button id="generateReport" class="btn-action btn-primary">הדפסת דוח / יצוא ל-PDF</button>
+    <button id="generateReport" class="btn-action btn-primary">הדפסת דוח / PDF</button>
   </div>
 </div>
 
@@ -173,196 +188,169 @@ html_code = """
 </div>
 
 <div class="boq-section">
-  <h3>כתב כמויות וחישוב עבודות צומת</h3>
+  <h3>כתב כמויות</h3>
   <div class="cables-inputs">
-    <div>
-      <label>כבל רמזורים עליון/עילי (מטרים):</label>
-      <input type="number" id="cableOverhead" value="0" min="0">
+    <div class="form-group">
+      <label>כבל עילי (מטרים):</label>
+      <input type="number" id="cableOverhead" value="0">
     </div>
-    <div>
-      <label>כבל רמזורים תת-קרקעי (מטרים):</label>
-      <input type="number" id="cableUnderground" value="0" min="0">
+    <div class="form-group">
+      <label>כבל תת-קרקעי (מטרים):</label>
+      <input type="number" id="cableUnderground" value="0">
+    </div>
+    <div class="form-group" style="flex: 2;">
+      <label>הערות מפקח:</label>
+      <input type="text" id="boqNotes" placeholder="הערות נוספות לכתב הכמויות...">
     </div>
   </div>
   <table id="boqTable">
     <thead>
       <tr>
         <th>אלמנט</th>
-        <th>קיים בצומת</th>
-        <th>הוספה (חדש)</th>
-        <th>פירוק</th>
+        <th>הוספה</th>
         <th>הסרה</th>
+        <th>פירוק</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
 </div>
 
-<div class="photos-section">
-  <h3>תיעוד מצולם מהשטח (לדוח)</h3>
-  <div class="photo-inputs">
-    <div class="photo-box">
-      <label><b>תמונת ארון רמזורים</b></label><br>
-      <input type="file" id="cabinetPhotoInput" accept="image/*" onchange="previewImage(this, 'cabinetImg')">
-      <br><img id="cabinetImg" src="" alt="תמונת ארון רמזורים">
-    </div>
-    <div class="photo-box">
-      <label><b>תמונת חיבורי הארקה</b></label><br>
-      <input type="file" id="groundingPhotoInput" accept="image/*" onchange="previewImage(this, 'groundingImg')">
-      <br><img id="groundingImg" src="" alt="תמונת חיבורי הארקה">
-    </div>
-  </div>
-</div>
-
 <script>
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 const ELEMENT_TYPES = [
-  // רמזורים
   {
-    category: "רמזורים",
     id: "trafficLight",
     label: "רמזור תנועה",
     icon: () => `
-      <rect x="-6" y="-16" width="12" height="30" rx="2" fill="#1e293b" stroke="#fff" stroke-width="0.5"/>
-      <circle cx="0" cy="-10" r="3.2" fill="#ef4444"/>
-      <circle cx="0" cy="-2"  r="3.2" fill="#f59e0b"/>
-      <circle cx="0" cy="6"   r="3.2" fill="#10b981"/>
+      <rect x="-6" y="-16" width="12" height="30" rx="2" fill="#2b2b2b"/>
+      <circle cx="0" cy="-10" r="3.2" fill="#d8555a"/>
+      <circle cx="0" cy="-2"  r="3.2" fill="#d99a2b"/>
+      <circle cx="0" cy="6"   r="3.2" fill="#2f9e8f"/>
     `
   },
   {
-    category: "רמזורים",
     id: "pedLight",
     label: "רמזור הולכי רגל",
     icon: () => `
-      <rect x="-6" y="-13" width="12" height="24" rx="2" fill="#1e293b" stroke="#fff" stroke-width="0.5"/>
-      <circle cx="0" cy="-6" r="3.4" fill="#ef4444"/>
-      <circle cx="0" cy="3"  r="3.4" fill="#10b981"/>
+      <rect x="-6" y="-13" width="12" height="24" rx="2" fill="#2b2b2b"/>
+      <circle cx="0" cy="-6" r="3.4" fill="#d8555a"/>
+      <circle cx="0" cy="3"  r="3.4" fill="#2f9e8f"/>
     `
   },
   {
-    category: "רמזורים",
     id: "bikeLight",
     label: "רמזור אופניים",
     icon: () => `
-      <rect x="-6" y="-13" width="12" height="24" rx="2" fill="#1e293b" stroke="#60a5fa" stroke-width="1"/>
-      <circle cx="0" cy="-6" r="3" fill="#ef4444"/>
-      <circle cx="0" cy="3"  r="3" fill="#10b981"/>
-      <path d="M-2,3 L2,3" stroke="#fff" stroke-width="0.8"/>
+      <rect x="-6" y="-13" width="12" height="24" rx="2" fill="#2b2b2b" stroke="#3b82f6" stroke-width="1"/>
+      <circle cx="0" cy="-6" r="3" fill="#d8555a"/>
+      <circle cx="0" cy="3"  r="3" fill="#2f9e8f"/>
     `
   },
   {
-    category: "רמזורים",
     id: "lrtLight",
     label: "רמזור רק\"ל",
     icon: () => `
-      <rect x="-7" y="-14" width="14" height="26" rx="2" fill="#0f172a" stroke="#f59e0b" stroke-width="1.2"/>
-      <line x1="-3" y1="-7" x2="3" y2="-7" stroke="#white" stroke-width="2"/>
-      <circle cx="0" cy="0" r="2.5" fill="#white"/>
-      <line x1="0" y1="4" x2="0" y2="10" stroke="#white" stroke-width="2"/>
+      <rect x="-7" y="-14" width="14" height="26" rx="2" fill="#111827" stroke="#f59e0b" stroke-width="1"/>
+      <line x1="-3" y1="-7" x2="3" y2="-7" stroke="#fff" stroke-width="2"/>
+      <circle cx="0" cy="0" r="2" fill="#fff"/>
+      <line x1="0" y1="4" x2="0" y2="9" stroke="#fff" stroke-width="2"/>
     `
   },
   {
-    category: "רמזורים",
-    id: "blinker",
-    label: "פנס מהבהב",
-    icon: () => `
-      <rect x="-2.5" y="-12" width="5" height="14" fill="#1e293b"/>
-      <circle cx="0" cy="-14" r="5" fill="#f59e0b"/>
-    `
-  },
-  // סימוני כביש וחצים
-  {
-    category: "סימוני כביש",
     id: "arrowStraight",
     label: "חץ ישר",
     icon: () => `
-      <path d="M0,10 L0,-10 M-5,-4 L0,-12 L5,-4" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M0,8 L0,-8 M-4,-2 L0,-9 L4,-2" stroke="#2b2b2b" stroke-width="2.5" fill="none" stroke-linecap="round"/>
     `
   },
   {
-    category: "סימוני כביש",
     id: "arrowLeft",
     label: "חץ שמאלה",
     icon: () => `
-      <path d="M4,10 L4,-1 C4,-5 -1,-8 -8,-8 M-4,-13 L-10,-8 L-4,-3" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M3,8 L3,-1 C3,-4 -1,-7 -7,-7 M-3,-11 L-8,-7 L-3,-3" stroke="#2b2b2b" stroke-width="2.5" fill="none" stroke-linecap="round"/>
     `
   },
   {
-    category: "סימוני כביש",
     id: "arrowRight",
     label: "חץ ימינה",
     icon: () => `
-      <path d="M-4,10 L-4,-1 C-4,-5 1,-8 8,-8 M4,-13 L10,-8 L4,-3" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M-3,8 L-3,-1 C-3,-4 1,-7 7,-7 M3,-11 L8,-7 L3,-3" stroke="#2b2b2b" stroke-width="2.5" fill="none" stroke-linecap="round"/>
     `
   },
   {
-    category: "סימוני כביש",
     id: "arrowStraightLeft",
     label: "חץ ישר+שמאלה",
     icon: () => `
-      <path d="M2,10 L2,-10 M-3,-4 L2,-12 L7,-4" stroke="#ffffff" stroke-width="2" fill="none"/>
-      <path d="M2,2 C2,-3 -2,-5 -8,-5 M-4,-9 L-9,-5 L-4,-1" stroke="#ffffff" stroke-width="2" fill="none"/>
+      <path d="M2,8 L2,-8 M-2,-2 L2,-9 L6,-2" stroke="#2b2b2b" stroke-width="2" fill="none"/>
+      <path d="M2,1 C2,-3 -2,-4 -7,-4 M-3,-7 L-7,-4 L-3,-1" stroke="#2b2b2b" stroke-width="2" fill="none"/>
     `
   },
   {
-    category: "סימוני כביש",
     id: "arrowUturn",
     label: "חץ פרסה",
     icon: () => `
-      <path d="M5,10 L5,-2 C5,-8 -5,-8 -5,-2 L-5,4 M-9,0 L-5,5 L-1,0" stroke="#ffffff" stroke-width="2" fill="none"/>
+      <path d="M4,8 L4,-2 C4,-7 -4,-7 -4,-2 L-4,3 M-7,0 L-4,4 L-1,0" stroke="#2b2b2b" stroke-width="2" fill="none"/>
     `
   },
   {
-    category: "סימוני כביש",
     id: "crosswalk",
     label: "מעבר חציה",
     icon: () => `
       <g>
-        <rect x="-14" y="-7" width="28" height="14" fill="none"/>
-        ${[-10,-3,4,11].map(x=>`<rect x="${x-2}" y="-7" width="4" height="14" fill="#ffffff"/>`).join("")}
+        <rect x="-16" y="-8" width="32" height="16" fill="none"/>
+        ${[-12,-4,4,12].map(x=>`<rect x="${x-2.5}" y="-8" width="5" height="16" fill="#e9edf3"/>`).join("")}
       </g>
     `
   },
-  // תשתיות ועמודים
   {
-    category: "תשתיות ועמודים",
+    id: "blinker",
+    label: "מהבהב",
+    icon: () => `
+      <rect x="-2.5" y="-14" width="5" height="16" fill="#2b2b2b"/>
+      <circle cx="0" cy="-16" r="5.5" fill="#d99a2b"/>
+      <line x1="0" y1="-24" x2="0" y2="-20" stroke="#d99a2b" stroke-width="2"/>
+      <line x1="-7" y1="-21" x2="-4.5" y2="-19" stroke="#d99a2b" stroke-width="2"/>
+      <line x1="7" y1="-21" x2="4.5" y2="-19" stroke="#d99a2b" stroke-width="2"/>
+    `
+  },
+  {
     id: "poleConcrete",
     label: "עמוד בטון",
     icon: () => `
-      <circle cx="0" cy="0" r="8" fill="#94a3b8" stroke="#334155" stroke-width="1.5"/>
+      <circle cx="0" cy="0" r="9" fill="#9aa3ad" stroke="#5c636b" stroke-width="1.5"/>
     `
   },
   {
-    category: "תשתיות ועמודים",
     id: "poleWood",
     label: "עמוד עץ",
     icon: () => `
-      <circle cx="0" cy="0" r="8" fill="#b45309" stroke="#451a03" stroke-width="1.5"/>
+      <circle cx="0" cy="0" r="9" fill="#a9784f" stroke="#6e4c2f" stroke-width="1.5"/>
     `
   },
   {
-    category: "תשתיות ועמודים",
     id: "camera",
     label: "מצלמה",
     icon: () => `
-      <rect x="-8" y="-5" width="16" height="10" rx="2" fill="#0f172a"/>
-      <circle cx="4" cy="0" r="3" fill="#38bdf8"/>
+      <rect x="-9" y="-6" width="18" height="12" rx="2" fill="#2b2b2b"/>
+      <circle cx="6" cy="0" r="4" fill="#111"/>
+      <circle cx="6" cy="0" r="1.6" fill="#4fb3ff"/>
     `
   },
   {
-    category: "תשתיות ועמודים",
     id: "sign",
     label: "תמרור",
     icon: () => `
-      <polygon points="0,-14 8,-6 0,2 -8,-6" fill="#fff" stroke="#ef4444" stroke-width="2"/>
+      <rect x="-1.8" y="-2" width="3.6" height="16" fill="#2b2b2b"/>
+      <polygon points="0,-18 10,-8 0,2 -10,-8" fill="#fff" stroke="#d8555a" stroke-width="2.2"/>
     `
   }
 ];
 
-const ACTIONS = ["existing", "add", "dismantle", "remove"];
-const ACTION_LABEL = { existing: "קיים", add: "הוספה", dismantle: "פירוק", remove: "הסרה" };
-const ACTION_COLOR = { existing: "#94a3b8", add: "#10b981", dismantle: "#f59e0b", remove: "#ef4444" };
+const ACTIONS = ["add", "remove", "dismantle"];
+const ACTION_LABEL = { add: "הוספה", remove: "הסרה", dismantle: "פירוק" };
+const ACTION_COLOR = { add: "#2f9e8f", remove: "#d8555a", dismantle: "#d99a2b" };
 
 const state = {
   shape: "X",
@@ -371,8 +359,9 @@ const state = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("siteDate").valueAsDate = new Date();
   renderPalette();
-  initJunctionWithDefaults();
+  renderJunctionBase();
   bindJunctionToggle();
   bindCanvasDropTarget();
   bindClearButton();
@@ -383,29 +372,24 @@ document.addEventListener("DOMContentLoaded", () => {
 function renderPalette() {
   const wrap = document.getElementById("paletteItems");
   wrap.innerHTML = "";
+  const heading = document.createElement("h3");
+  heading.textContent = "אלמנטים";
+  wrap.appendChild(heading);
 
-  const categories = [...new Set(ELEMENT_TYPES.map(t => t.category))];
-
-  categories.forEach(cat => {
-    const catTitle = document.createElement("h4");
-    catTitle.textContent = cat;
-    wrap.appendChild(catTitle);
-
-    ELEMENT_TYPES.filter(t => t.category === cat).forEach(type => {
-      const item = document.createElement("div");
-      item.className = "palette-item";
-      item.draggable = true;
-      item.dataset.type = type.id;
-      item.innerHTML = `
-        <svg viewBox="-16 -20 32 32">${type.icon()}</svg>
-        <span>${type.label}</span>
-      `;
-      item.addEventListener("dragstart", e => {
-        e.dataTransfer.setData("text/plain", type.id);
-        e.dataTransfer.effectAllowed = "copy";
-      });
-      wrap.appendChild(item);
+  ELEMENT_TYPES.forEach(type => {
+    const item = document.createElement("div");
+    item.className = "palette-item";
+    item.draggable = true;
+    item.dataset.type = type.id;
+    item.innerHTML = `
+      <svg viewBox="-20 -28 40 40">${type.icon()}</svg>
+      <span>${type.label}</span>
+    `;
+    item.addEventListener("dragstart", e => {
+      e.dataTransfer.setData("text/plain", type.id);
+      e.dataTransfer.effectAllowed = "copy";
     });
+    wrap.appendChild(item);
   });
 }
 
@@ -416,32 +400,8 @@ function bindJunctionToggle() {
       toggle.querySelectorAll(".junction-toggle__btn").forEach(b => b.classList.remove("is-active"));
       btn.classList.add("is-active");
       state.shape = btn.dataset.shape;
-      initJunctionWithDefaults();
+      renderJunctionBase();
     });
-  });
-}
-
-function initJunctionWithDefaults() {
-  state.elements = [];
-  document.querySelectorAll(".placed-el").forEach(n => n.remove());
-  renderJunctionBase();
-
-  const cx = 400, cy = 300, offset = 110;
-  
-  // הוספת מעברי חצייה מובנים כברירת מחדל במצב "קיים"
-  const defaultCrosswalks = [
-    { x: cx, y: cy - offset, action: "existing" },
-    { x: cx, y: cy + offset, action: "existing" },
-    { x: cx - offset, y: cy, action: "existing" },
-    { x: cx + offset, y: cy, action: "existing" }
-  ];
-
-  if (state.shape === "T") {
-    defaultCrosswalks.splice(1, 1); // ללא מעבר דרומי ב-T
-  }
-
-  defaultCrosswalks.forEach(cw => {
-    addElement("crosswalk", cw.x, cw.y, cw.action);
   });
 }
 
@@ -454,8 +414,12 @@ function renderJunctionBase() {
   base.setAttribute("id", "baseLayer");
   svg.insertBefore(base, svg.firstChild);
 
-  for (let x = 0; x <= 800; x += 40) base.appendChild(line(x, 0, x, 600, "grid-line"));
-  for (let y = 0; y <= 600; y += 40) base.appendChild(line(0, y, 800, y, "grid-line"));
+  for (let x = 0; x <= 800; x += 40) {
+    base.appendChild(line(x, 0, x, 600, "grid-line"));
+  }
+  for (let y = 0; y <= 600; y += 40) {
+    base.appendChild(line(0, y, 800, y, "grid-line"));
+  }
 
   const ROAD_W = 140;
   const cx = 400, cy = 300;
@@ -500,7 +464,7 @@ function bindCanvasDropTarget() {
     const type = ELEMENT_TYPES.find(t => t.id === typeId);
     if (!type) return;
     const pt = clientToSvgPoint(svg, e.clientX, e.clientY);
-    addElement(type.id, pt.x, pt.y, "add");
+    addElement(type.id, pt.x, pt.y);
   });
 }
 
@@ -511,8 +475,8 @@ function clientToSvgPoint(svg, clientX, clientY) {
   return p.matrixTransform(ctm);
 }
 
-function addElement(typeId, x, y, action = "add") {
-  const el = { id: state.nextId++, type: typeId, x, y, action };
+function addElement(typeId, x, y) {
+  const el = { id: state.nextId++, type: typeId, x, y, action: "add" };
   state.elements.push(el);
   renderPlacedElement(el);
   renderBoqTable();
@@ -529,8 +493,8 @@ function renderPlacedElement(elData) {
   g.setAttribute("transform", `translate(${elData.x},${elData.y})`);
 
   const ring = document.createElementNS(SVG_NS, "circle");
-  ring.setAttribute("cx", 0); ring.setAttribute("cy", 0);
-  ring.setAttribute("r", 18);
+  ring.setAttribute("cx", 0); ring.setAttribute("cy", -8);
+  ring.setAttribute("r", 20);
   ring.setAttribute("fill", "none");
   ring.setAttribute("stroke", ACTION_COLOR[elData.action]);
   ring.setAttribute("stroke-width", 2.5);
@@ -542,17 +506,17 @@ function renderPlacedElement(elData) {
 
   const label = document.createElementNS(SVG_NS, "text");
   label.setAttribute("class", "el-label");
-  label.setAttribute("y", 26);
-  label.textContent = `${type.label} (${ACTION_LABEL[elData.action]})`;
+  label.setAttribute("y", 24);
+  label.textContent = `${type.label} · ${ACTION_LABEL[elData.action]}`;
   g.appendChild(label);
 
   const delCircle = document.createElementNS(SVG_NS, "circle");
   delCircle.setAttribute("class", "el-remove");
-  delCircle.setAttribute("cx", 14); delCircle.setAttribute("cy", -14); delCircle.setAttribute("r", 6.5);
+  delCircle.setAttribute("cx", 16); delCircle.setAttribute("cy", -22); delCircle.setAttribute("r", 7);
   
   const delX = document.createElementNS(SVG_NS, "text");
   delX.setAttribute("class", "el-remove-x");
-  delX.setAttribute("x", 14); delX.setAttribute("y", -11.5);
+  delX.setAttribute("x", 16); delX.setAttribute("y", -18.5);
   delX.textContent = "×";
   
   g.appendChild(delCircle);
@@ -614,15 +578,17 @@ function updateCanvasCount() {
 
 function bindClearButton() {
   document.getElementById("clearCanvas").addEventListener("click", () => {
-    if (confirm("האם לנקות את כל הסקיצה ולאפס את הצומת?")) {
-      initJunctionWithDefaults();
-    }
+    if (state.elements.length && !confirm("לנקות את כל האלמנטים מהסקיצה?")) return;
+    state.elements = [];
+    document.querySelectorAll(".placed-el").forEach(n => n.remove());
+    renderBoqTable();
+    updateCanvasCount();
   });
 }
 
 function computeBoq() {
   return ELEMENT_TYPES.map(type => {
-    const counts = { existing: 0, add: 0, dismantle: 0, remove: 0 };
+    const counts = { add: 0, remove: 0, dismantle: 0 };
     state.elements.filter(e => e.type === type.id).forEach(e => counts[e.action]++);
     return { label: type.label, ...counts };
   });
@@ -632,32 +598,17 @@ function renderBoqTable() {
   const tbody = document.querySelector("#boqTable tbody");
   tbody.innerHTML = "";
   computeBoq().forEach(row => {
-    const total = row.existing + row.add + row.dismantle + row.remove;
-    if (total === 0) return; // מציגים בטבלה רק אלמנטים שקיימים בצומת
-
+    const total = row.add + row.remove + row.dismantle;
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td style="text-align: right; font-weight: bold;">${row.label}</td>
-      <td class="${row.existing ? "" : "zero"}">${row.existing}</td>
-      <td class="${row.add ? "" : "zero"}" style="color: #10b981; font-weight: bold;">${row.add}</td>
-      <td class="${row.dismantle ? "" : "zero"}" style="color: #f59e0b;">${row.dismantle}</td>
-      <td class="${row.remove ? "" : "zero"}" style="color: #ef4444;">${row.remove}</td>
+      <td>${row.label}</td>
+      <td class="${row.add ? "" : "zero"}">${row.add}</td>
+      <td class="${row.remove ? "" : "zero"}">${row.remove}</td>
+      <td class="${row.dismantle ? "" : "zero"}">${row.dismantle}</td>
     `;
+    if (total === 0) tr.style.opacity = "0.55";
     tbody.appendChild(tr);
   });
-}
-
-function previewImage(input, imgId) {
-  const file = input.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const img = document.getElementById(imgId);
-      img.src = e.target.result;
-      img.style.display = "block";
-    }
-    reader.readAsDataURL(file);
-  }
 }
 
 function bindReportButton() {
@@ -670,4 +621,4 @@ function bindReportButton() {
 </html>
 """
 
-components.html(html_code, height=1100, scrolling=True)
+components.html(html_code, height=1000, scrolling=True)
