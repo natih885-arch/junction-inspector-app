@@ -1,390 +1,224 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(layout="wide", page_title="סקיצת צומת + כתב כמויות")
+st.set_page_config(
+    page_title="מחולל סקיצות צומת וכתב כמויות",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-html_code = """
+# -----------------------------------------------------------------------------
+# HTML / JS / SVG Engine
+# -----------------------------------------------------------------------------
+HTML_CODE = """
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
-<meta charset="utf-8">
-<style>
-  * { box-sizing: border-box; }
-  body {
-    font-family: system-ui, -apple-system, sans-serif;
-    margin: 0;
-    padding: 15px;
-    background-color: #f4f6f8;
-    color: #333;
-  }
-  
-  /* טופס פרטי אתר */
-  .site-details {
-    background: #fff;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin-bottom: 15px;
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-  }
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    flex: 1;
-    min-width: 180px;
-  }
-  .form-group label { font-size: 13px; font-weight: bold; }
-  .form-group input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; }
+  <meta charset="UTF-8">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #38bdf8;
+      --add-color: #2f9e8f;
+      --remove-color: #d8555a;
+      --dismantle-color: #d99a2b;
+    }
 
-  .controls {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 15px;
-    align-items: center;
-    background: #fff;
-    padding: 10px 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-  .junction-toggle__btn {
-    padding: 6px 16px;
-    border: 1px solid #ccc;
-    background: #fff;
-    cursor: pointer;
-    border-radius: 4px;
-    font-weight: bold;
-  }
-  .junction-toggle__btn.is-active {
-    background: #007bff;
-    color: white;
-    border-color: #007bff;
-  }
-  .btn-action {
-    padding: 6px 14px;
-    border: 1px solid #ccc;
-    background: #fff;
-    cursor: pointer;
-    border-radius: 4px;
-  }
-  .btn-primary { background: #28a745; color: white; border-color: #28a745; font-weight: bold; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); padding: 15px; }
 
-  .app-container {
-    display: flex;
-    gap: 15px;
-  }
-  .palette {
-    width: 220px;
-    background: #fff;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    max-height: 600px;
-    overflow-y: auto;
-  }
-  .palette h3 { margin-top: 0; margin-bottom: 10px; font-size: 16px; }
-  .palette-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px;
-    margin-bottom: 8px;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    cursor: grab;
-    user-select: none;
-    font-size: 13px;
-  }
-  .palette-item svg { width: 30px; height: 30px; flex-shrink: 0; }
-  
-  .canvas-area {
-    flex: 1;
-    background: #fff;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-  svg#sketchSvg {
-    width: 100%;
-    height: 520px;
-    background-color: #eef2f5;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-  }
-  .grid-line { stroke: #e0e0e0; stroke-width: 1; }
-  .road { fill: #4a5568; }
-  .lane-dash { stroke: #ffffff; stroke-width: 2; stroke-dasharray: 8 8; }
-  .placed-el { cursor: move; }
-  .el-label { font-size: 11px; fill: #1a202c; text-anchor: middle; font-weight: bold; }
-  .el-remove { fill: #ef4444; cursor: pointer; }
-  .el-remove-x { fill: white; font-size: 12px; font-weight: bold; text-anchor: middle; cursor: pointer; pointer-events: none; }
-  
-  .boq-section {
-    margin-top: 15px;
-    background: #fff;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
-  .boq-section h3 { margin-top: 0; }
-  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-  th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-  th { background-color: #f2f2f2; }
-  .zero { color: #ccc; }
-  
-  .cables-inputs {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 15px;
-    background: #f8f9fa;
-    padding: 10px;
-    border-radius: 6px;
-  }
+    .app-container { display: grid; grid-template-columns: 280px 1fr; gap: 20px; height: calc(100vh - 30px); }
 
-  @media print {
-    .palette, .controls, .no-print { display: none !important; }
-    .canvas-area, .boq-section, .site-details { box-shadow: none; border: none; }
-    body { background: white; }
-  }
-</style>
+    /* Palette Sidebar */
+    .sidebar {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+    }
+    .sidebar h3 { font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; color: var(--primary); }
+    .palette-item {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: grab;
+      user-select: none;
+      transition: all 0.2s;
+    }
+    .palette-item:hover { border-color: var(--primary); background: #1e293b; }
+    .palette-item svg { width: 32px; height: 32px; flex-shrink: 0; }
+    .palette-item span { font-size: 0.95rem; font-weight: 500; }
+
+    /* Main Area */
+    .main-area { display: flex; flex-direction: column; gap: 15px; }
+
+    .toolbar {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 10px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .junction-toggle { display: flex; gap: 8px; }
+    .junction-toggle__btn {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .junction-toggle__btn.is-active { background: var(--primary); color: #0f172a; border-color: var(--primary); }
+
+    .btn-danger {
+      background: #991b1b;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn-danger:hover { background: #dc2626; }
+
+    /* Canvas */
+    .canvas-container {
+      flex: 1;
+      background: #000000;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      min-height: 500px;
+    }
+    #sketchSvg { width: 100%; height: 100%; display: block; }
+
+    /* SVG Elements Styling */
+    .grid-line { stroke: #1e293b; stroke-width: 1; }
+    .road { fill: #1e293b; stroke: #334155; stroke-width: 2; }
+    .lane-dash { stroke: #64748b; stroke-width: 2; stroke-dasharray: 8 8; }
+    .placed-el { cursor: move; }
+    .el-label { fill: #f8fafc; font-size: 11px; text-anchor: middle; font-weight: 500; pointer-events: none; }
+    .el-remove { fill: #ef4444; cursor: pointer; }
+    .el-remove-x { fill: white; font-size: 10px; font-weight: bold; text-anchor: middle; cursor: pointer; pointer-events: none; }
+
+    /* BOQ Panel */
+    .boq-panel {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 15px;
+    }
+    .boq-panel h3 { margin-bottom: 10px; color: var(--primary); }
+    table { width: 100%; border-collapse: collapse; text-align: right; }
+    th, td { padding: 8px 12px; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
+    th { background: #0f172a; color: var(--text-muted); }
+    .zero { opacity: 0.3; }
+
+    /* Print Mode Hide */
+    @media print {
+      .sidebar, .toolbar, .btn-danger { display: none !important; }
+      .app-container { display: block; }
+      body { background: white; color: black; }
+    }
+  </style>
 </head>
 <body>
 
-<div class="site-details">
-  <div class="form-group">
-    <label>שם האתר / צומת:</label>
-    <input type="text" id="siteName" placeholder="לדוגמה: צומת הרצל-ז'בוטינסקי">
-  </div>
-  <div class="form-group">
-    <label>שם המפקח:</label>
-    <input type="text" id="inspectorName" placeholder="שם המפקח">
-  </div>
-  <div class="form-group">
-    <label>תאריך:</label>
-    <input type="date" id="siteDate">
-  </div>
-</div>
-
-<div class="controls">
-  <div id="junctionToggle">
-    <button class="junction-toggle__btn is-active" data-shape="X">צומת X</button>
-    <button class="junction-toggle__btn" data-shape="T">צומת T</button>
-  </div>
-  <div id="canvasCount">0 אלמנטים בסקיצה</div>
-  <div>
-    <button id="clearCanvas" class="btn-action">ניקוי סקיצה</button>
-    <button id="generateReport" class="btn-action btn-primary">הדפסת דוח / PDF</button>
-  </div>
-</div>
-
 <div class="app-container">
-  <div class="palette" id="paletteItems"></div>
-  <div class="canvas-area">
-    <svg id="sketchSvg" viewBox="0 0 800 600"></svg>
+  <!-- סיידבר אלמנטים -->
+  <div class="sidebar">
+    <h3>בנק אלמנטים</h3>
+    <div id="paletteItems"></div>
   </div>
-</div>
 
-<div class="boq-section">
-  <h3>כתב כמויות</h3>
-  <div class="cables-inputs">
-    <div class="form-group">
-      <label>כבל עילי (מטרים):</label>
-      <input type="number" id="cableOverhead" value="0">
+  <!-- אזור מרכזי -->
+  <div class="main-area">
+    <div class="toolbar">
+      <div class="junction-toggle" id="junctionToggle">
+        <button class="junction-toggle__btn is-active" data-shape="X">צומת X</button>
+        <button class="junction-toggle__btn" data-shape="T">צומת T</button>
+      </div>
+      <span id="canvasCount" style="color: var(--text-muted); font-size: 0.9rem;">0 אלמנטים בסקיצה</span>
+      <button class="btn-danger" id="clearCanvas">ניקוי סקיצה</button>
     </div>
-    <div class="form-group">
-      <label>כבל תת-קרקעי (מטרים):</label>
-      <input type="number" id="cableUnderground" value="0">
+
+    <div class="canvas-container">
+      <svg id="sketchSvg" viewBox="0 0 800 600"></svg>
     </div>
-    <div class="form-group" style="flex: 2;">
-      <label>הערות מפקח:</label>
-      <input type="text" id="boqNotes" placeholder="הערות נוספות לכתב הכמויות...">
+
+    <!-- טבלת כמויות בתוך הממשק -->
+    <div class="boq-panel">
+      <h3>כתב כמויות אוטומטי (מתוך הסקיצה)</h3>
+      <table id="boqTable">
+        <thead>
+          <tr>
+            <th>תיאור האלמנט</th>
+            <th>הוספה (יח')</th>
+            <th>הסרה (יח')</th>
+            <th>פירוק (יח')</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
   </div>
-  <table id="boqTable">
-    <thead>
-      <tr>
-        <th>אלמנט</th>
-        <th>הוספה</th>
-        <th>הסרה</th>
-        <th>פירוק</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
 </div>
 
 <script>
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 const ELEMENT_TYPES = [
-  {
-    id: "trafficLight",
-    label: "רמזור תנועה",
-    icon: () => `
-      <rect x="-6" y="-16" width="12" height="30" rx="2" fill="#2b2b2b"/>
-      <circle cx="0" cy="-10" r="3.2" fill="#d8555a"/>
-      <circle cx="0" cy="-2"  r="3.2" fill="#d99a2b"/>
-      <circle cx="0" cy="6"   r="3.2" fill="#2f9e8f"/>
-    `
-  },
-  {
-    id: "pedLight",
-    label: "רמזור הולכי רגל",
-    icon: () => `
-      <rect x="-6" y="-13" width="12" height="24" rx="2" fill="#2b2b2b"/>
-      <circle cx="0" cy="-6" r="3.4" fill="#d8555a"/>
-      <circle cx="0" cy="3"  r="3.4" fill="#2f9e8f"/>
-    `
-  },
-  {
-    id: "bikeLight",
-    label: "רמזור אופניים",
-    icon: () => `
-      <rect x="-6" y="-13" width="12" height="24" rx="2" fill="#2b2b2b" stroke="#3b82f6" stroke-width="1"/>
-      <circle cx="0" cy="-6" r="3" fill="#d8555a"/>
-      <circle cx="0" cy="3"  r="3" fill="#2f9e8f"/>
-    `
-  },
-  {
-    id: "lrtLight",
-    label: "רמזור רק\"ל",
-    icon: () => `
-      <rect x="-7" y="-14" width="14" height="26" rx="2" fill="#111827" stroke="#f59e0b" stroke-width="1"/>
-      <line x1="-3" y1="-7" x2="3" y2="-7" stroke="#fff" stroke-width="2"/>
-      <circle cx="0" cy="0" r="2" fill="#fff"/>
-      <line x1="0" y1="4" x2="0" y2="9" stroke="#fff" stroke-width="2"/>
-    `
-  },
-  {
-    id: "arrowStraight",
-    label: "חץ ישר",
-    icon: () => `
-      <path d="M0,8 L0,-8 M-4,-2 L0,-9 L4,-2" stroke="#2b2b2b" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-    `
-  },
-  {
-    id: "arrowLeft",
-    label: "חץ שמאלה",
-    icon: () => `
-      <path d="M3,8 L3,-1 C3,-4 -1,-7 -7,-7 M-3,-11 L-8,-7 L-3,-3" stroke="#2b2b2b" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-    `
-  },
-  {
-    id: "arrowRight",
-    label: "חץ ימינה",
-    icon: () => `
-      <path d="M-3,8 L-3,-1 C-3,-4 1,-7 7,-7 M3,-11 L8,-7 L3,-3" stroke="#2b2b2b" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-    `
-  },
-  {
-    id: "arrowStraightLeft",
-    label: "חץ ישר+שמאלה",
-    icon: () => `
-      <path d="M2,8 L2,-8 M-2,-2 L2,-9 L6,-2" stroke="#2b2b2b" stroke-width="2" fill="none"/>
-      <path d="M2,1 C2,-3 -2,-4 -7,-4 M-3,-7 L-7,-4 L-3,-1" stroke="#2b2b2b" stroke-width="2" fill="none"/>
-    `
-  },
-  {
-    id: "arrowUturn",
-    label: "חץ פרסה",
-    icon: () => `
-      <path d="M4,8 L4,-2 C4,-7 -4,-7 -4,-2 L-4,3 M-7,0 L-4,4 L-1,0" stroke="#2b2b2b" stroke-width="2" fill="none"/>
-    `
-  },
-  {
-    id: "crosswalk",
-    label: "מעבר חציה",
-    icon: () => `
-      <g>
-        <rect x="-16" y="-8" width="32" height="16" fill="none"/>
-        ${[-12,-4,4,12].map(x=>`<rect x="${x-2.5}" y="-8" width="5" height="16" fill="#e9edf3"/>`).join("")}
-      </g>
-    `
-  },
-  {
-    id: "blinker",
-    label: "מהבהב",
-    icon: () => `
-      <rect x="-2.5" y="-14" width="5" height="16" fill="#2b2b2b"/>
-      <circle cx="0" cy="-16" r="5.5" fill="#d99a2b"/>
-      <line x1="0" y1="-24" x2="0" y2="-20" stroke="#d99a2b" stroke-width="2"/>
-      <line x1="-7" y1="-21" x2="-4.5" y2="-19" stroke="#d99a2b" stroke-width="2"/>
-      <line x1="7" y1="-21" x2="4.5" y2="-19" stroke="#d99a2b" stroke-width="2"/>
-    `
-  },
-  {
-    id: "poleConcrete",
-    label: "עמוד בטון",
-    icon: () => `
-      <circle cx="0" cy="0" r="9" fill="#9aa3ad" stroke="#5c636b" stroke-width="1.5"/>
-    `
-  },
-  {
-    id: "poleWood",
-    label: "עמוד עץ",
-    icon: () => `
-      <circle cx="0" cy="0" r="9" fill="#a9784f" stroke="#6e4c2f" stroke-width="1.5"/>
-    `
-  },
-  {
-    id: "camera",
-    label: "מצלמה",
-    icon: () => `
-      <rect x="-9" y="-6" width="18" height="12" rx="2" fill="#2b2b2b"/>
-      <circle cx="6" cy="0" r="4" fill="#111"/>
-      <circle cx="6" cy="0" r="1.6" fill="#4fb3ff"/>
-    `
-  },
-  {
-    id: "sign",
-    label: "תמרור",
-    icon: () => `
-      <rect x="-1.8" y="-2" width="3.6" height="16" fill="#2b2b2b"/>
-      <polygon points="0,-18 10,-8 0,2 -10,-8" fill="#fff" stroke="#d8555a" stroke-width="2.2"/>
-    `
-  }
+  { id: "trafficLight", label: "רמזור תנועה", icon: () => `<rect x="-6" y="-16" width="12" height="30" rx="2" fill="#2b2b2b"/><circle cx="0" cy="-10" r="3.2" fill="#d8555a"/><circle cx="0" cy="-2" r="3.2" fill="#d99a2b"/><circle cx="0" cy="6" r="3.2" fill="#2f9e8f"/>` },
+  { id: "pedLight", label: "רמזור הולכי רגל", icon: () => `<rect x="-6" y="-13" width="12" height="24" rx="2" fill="#2b2b2b"/><circle cx="0" cy="-6" r="3.4" fill="#d8555a"/><circle cx="0" cy="3" r="3.4" fill="#2f9e8f"/>` },
+  { id: "crosswalk", label: "מעבר חציה", icon: () => `<g><rect x="-16" y="-8" width="32" height="16" fill="none"/>${[-12,-4,4,12].map(x=>`<rect x="${x-2.5}" y="-8" width="5" height="16" fill="#e9edf3"/>`).join("")}</g>` },
+  { id: "blinker", label: "מהבהב", icon: () => `<rect x="-2.5" y="-14" width="5" height="16" fill="#2b2b2b"/><circle cx="0" cy="-16" r="5.5" fill="#d99a2b"/><line x1="0" y1="-24" x2="0" y2="-20" stroke="#d99a2b" stroke-width="2"/><line x1="-7" y1="-21" x2="-4.5" y2="-19" stroke="#d99a2b" stroke-width="2"/><line x1="7" y1="-21" x2="4.5" y2="-19" stroke="#d99a2b" stroke-width="2"/>` },
+  { id: "poleConcrete", label: "עמוד בטון", icon: () => `<circle cx="0" cy="0" r="9" fill="#9aa3ad" stroke="#5c636b" stroke-width="1.5"/>` },
+  { id: "poleWood", label: "עמוד עץ", icon: () => `<circle cx="0" cy="0" r="9" fill="#a9784f" stroke="#6e4c2f" stroke-width="1.5"/>` },
+  { id: "camera", label: "מצלמה", icon: () => `<rect x="-9" y="-6" width="18" height="12" rx="2" fill="#2b2b2b"/><circle cx="6" cy="0" r="4" fill="#111"/><circle cx="6" cy="0" r="1.6" fill="#4fb3ff"/>` },
+  { id: "sign", label: "תמרור", icon: () => `<rect x="-1.8" y="-2" width="3.6" height="16" fill="#2b2b2b"/><polygon points="0,-18 10,-8 0,2 -10,-8" fill="#fff" stroke="#d8555a" stroke-width="2.2"/>` }
 ];
 
 const ACTIONS = ["add", "remove", "dismantle"];
 const ACTION_LABEL = { add: "הוספה", remove: "הסרה", dismantle: "פירוק" };
 const ACTION_COLOR = { add: "#2f9e8f", remove: "#d8555a", dismantle: "#d99a2b" };
 
-const state = {
-  shape: "X",
-  elements: [],
-  nextId: 1
-};
+const state = { shape: "X", elements: [], nextId: 1 };
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("siteDate").valueAsDate = new Date();
   renderPalette();
   renderJunctionBase();
   bindJunctionToggle();
   bindCanvasDropTarget();
   bindClearButton();
-  bindReportButton();
   renderBoqTable();
 });
 
 function renderPalette() {
   const wrap = document.getElementById("paletteItems");
   wrap.innerHTML = "";
-  const heading = document.createElement("h3");
-  heading.textContent = "אלמנטים";
-  wrap.appendChild(heading);
-
   ELEMENT_TYPES.forEach(type => {
     const item = document.createElement("div");
     item.className = "palette-item";
     item.draggable = true;
     item.dataset.type = type.id;
-    item.innerHTML = `
-      <svg viewBox="-20 -28 40 40">${type.icon()}</svg>
-      <span>${type.label}</span>
-    `;
+    item.innerHTML = `<svg viewBox="-20 -28 40 40">${type.icon()}</svg><span>${type.label}</span>`;
     item.addEventListener("dragstart", e => {
       e.dataTransfer.setData("text/plain", type.id);
       e.dataTransfer.effectAllowed = "copy";
@@ -414,15 +248,10 @@ function renderJunctionBase() {
   base.setAttribute("id", "baseLayer");
   svg.insertBefore(base, svg.firstChild);
 
-  for (let x = 0; x <= 800; x += 40) {
-    base.appendChild(line(x, 0, x, 600, "grid-line"));
-  }
-  for (let y = 0; y <= 600; y += 40) {
-    base.appendChild(line(0, y, 800, y, "grid-line"));
-  }
+  for (let x = 0; x <= 800; x += 40) base.appendChild(line(x, 0, x, 600, "grid-line"));
+  for (let y = 0; y <= 600; y += 40) base.appendChild(line(0, y, 800, y, "grid-line"));
 
-  const ROAD_W = 140;
-  const cx = 400, cy = 300;
+  const ROAD_W = 140, cx = 400, cy = 300;
 
   if (state.shape === "X") {
     base.appendChild(rect(cx - ROAD_W/2, 0, ROAD_W, 600, "road"));
@@ -444,15 +273,13 @@ function line(x1,y1,x2,y2,cls){
   const el = document.createElementNS(SVG_NS,"line");
   el.setAttribute("x1",x1); el.setAttribute("y1",y1);
   el.setAttribute("x2",x2); el.setAttribute("y2",y2);
-  el.setAttribute("class",cls);
-  return el;
+  el.setAttribute("class",cls); return el;
 }
 function rect(x,y,w,h,cls){
   const el = document.createElementNS(SVG_NS,"rect");
   el.setAttribute("x",x); el.setAttribute("y",y);
   el.setAttribute("width",w); el.setAttribute("height",h);
-  el.setAttribute("class",cls);
-  return el;
+  el.setAttribute("class",cls); return el;
 }
 
 function bindCanvasDropTarget() {
@@ -493,11 +320,9 @@ function renderPlacedElement(elData) {
   g.setAttribute("transform", `translate(${elData.x},${elData.y})`);
 
   const ring = document.createElementNS(SVG_NS, "circle");
-  ring.setAttribute("cx", 0); ring.setAttribute("cy", -8);
-  ring.setAttribute("r", 20);
-  ring.setAttribute("fill", "none");
-  ring.setAttribute("stroke", ACTION_COLOR[elData.action]);
-  ring.setAttribute("stroke-width", 2.5);
+  ring.setAttribute("cx", 0); ring.setAttribute("cy", -8); ring.setAttribute("r", 20);
+  ring.setAttribute("fill", "none"); ring.setAttribute("stroke", ACTION_COLOR[elData.action]);
+  ring.setAttribute("stroke-width", 2.5); ring.setAttribute("class", "action-ring");
   g.appendChild(ring);
 
   const icon = document.createElementNS(SVG_NS, "g");
@@ -505,36 +330,26 @@ function renderPlacedElement(elData) {
   g.appendChild(icon);
 
   const label = document.createElementNS(SVG_NS, "text");
-  label.setAttribute("class", "el-label");
-  label.setAttribute("y", 24);
+  label.setAttribute("class", "el-label"); label.setAttribute("y", 24);
   label.textContent = `${type.label} · ${ACTION_LABEL[elData.action]}`;
   g.appendChild(label);
 
   const delCircle = document.createElementNS(SVG_NS, "circle");
   delCircle.setAttribute("class", "el-remove");
   delCircle.setAttribute("cx", 16); delCircle.setAttribute("cy", -22); delCircle.setAttribute("r", 7);
-  
   const delX = document.createElementNS(SVG_NS, "text");
   delX.setAttribute("class", "el-remove-x");
-  delX.setAttribute("x", 16); delX.setAttribute("y", -18.5);
-  delX.textContent = "×";
+  delX.setAttribute("x", 16); delX.setAttribute("y", -19.5); delX.textContent = "×";
   
-  g.appendChild(delCircle);
-  g.appendChild(delX);
+  g.appendChild(delCircle); g.appendChild(delX);
 
   delCircle.addEventListener("click", (e) => { e.stopPropagation(); removeElement(elData.id); });
-  delX.addEventListener("click", (e) => { e.stopPropagation(); removeElement(elData.id); });
-
-  icon.addEventListener("click", (e) => {
-    e.stopPropagation();
-    cycleAction(elData.id);
-  });
+  icon.addEventListener("click", (e) => { e.stopPropagation(); cycleAction(elData.id); });
 
   let dragging = false;
   g.addEventListener("pointerdown", (e) => {
     if (e.target === delCircle || e.target === delX) return;
-    dragging = true;
-    g.setPointerCapture(e.pointerId);
+    dragging = true; g.setPointerCapture(e.pointerId);
   });
   g.addEventListener("pointermove", (e) => {
     if (!dragging) return;
@@ -606,14 +421,8 @@ function renderBoqTable() {
       <td class="${row.remove ? "" : "zero"}">${row.remove}</td>
       <td class="${row.dismantle ? "" : "zero"}">${row.dismantle}</td>
     `;
-    if (total === 0) tr.style.opacity = "0.55";
+    if (total === 0) tr.style.opacity = "0.4";
     tbody.appendChild(tr);
-  });
-}
-
-function bindReportButton() {
-  document.getElementById("generateReport").addEventListener("click", () => {
-    window.print();
   });
 }
 </script>
@@ -621,4 +430,58 @@ function bindReportButton() {
 </html>
 """
 
-components.html(html_code, height=1000, scrolling=True)
+# -----------------------------------------------------------------------------
+# Streamlit UI Layout
+# -----------------------------------------------------------------------------
+st.title("🚦 מחולל סקיצות צומת ודוח כתב כמויות")
+
+# סיידבר פרטי דוח
+with st.sidebar:
+    st.header("📋 פרטי דוח הפיקוח")
+    site_name = st.text_input("שם האתר / צומת", placeholder="לדוגמה: צומת אלנבי / רוטשילד")
+    inspector_name = st.text_input("שם המפקח", placeholder="שם מלא")
+    site_date = st.date_input("תאריך בדיקה")
+    
+    st.subheader("🔌 תשתיות כבלים")
+    cable_overhead = st.number_input("כבל עילי (מטרים)", min_value=0, value=0, step=5)
+    cable_underground = st.number_input("כבל תת-קרקעי (מטרים)", min_value=0, value=0, step=5)
+    
+    notes = st.text_area("הערות נוספות לדוח", placeholder="פירוט תקלות, דגשים לביצוע...")
+
+# תצוגה ראשית: 2 טאבים (סקיצה אינטראקטיבית / הפקת דוח)
+tab1, tab2 = st.tabs(["🎨 סקיצה אינטראקטיבית", "📄 תצוגת דוח מלא להדפסה"])
+
+with tab1:
+    components.html(HTML_CODE, height=920, scrolling=False)
+
+with tab2:
+    st.subheader("תצוגת דוח סופי")
+    st.info("💡 להדפסה או שמירה כ-PDF, לחץ Ctrl+P במקלדת (או Cmd+P ב-Mac)")
+    
+    # תצוגת הדוח
+    st.markdown(f"""
+    <div style="background: white; color: black; padding: 25px; border-radius: 8px; font-family: sans-serif; direction: rtl;">
+        <h2 style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px;">דוח פיקוח ותשתיות צומת</h2>
+        
+        <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse; border: none;">
+            <tr style="border: none;">
+                <td style="border: none;"><strong>אתר:</strong> {site_name or '—'}</td>
+                <td style="border: none;"><strong>תאריך:</strong> {site_date}</td>
+                <td style="border: none;"><strong>מפקח:</strong> {inspector_name or '—'}</td>
+            </tr>
+        </table>
+        
+        <hr style="margin: 15px 0;">
+        
+        <h4>תשתיות כבלים:</h4>
+        <ul>
+            <li><strong>כבל עילי:</strong> {cable_overhead} מטר</li>
+            <li><strong>כבל תת-קרקעי:</strong> {cable_underground} מטר</li>
+        </ul>
+        
+        <hr style="margin: 15px 0;">
+        
+        <h4>הערות מפקח:</h4>
+        <p style="background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #ddd;">{notes or 'אין הערות נוספות.'}</p>
+    </div>
+    """, unsafe_allow_html=True)
