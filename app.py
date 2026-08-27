@@ -1,5 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import textwrap
 
 st.set_page_config(
     page_title="מחולל סקיצות צומת וכתב כמויות",
@@ -749,7 +750,7 @@ with tab2:
     st.info("💡 להדפסה או שמירה כ-PDF, לחץ Ctrl+P במקלדת (או Cmd+P ב-Mac)")
     
     # תצוגת הדוח
-    st.markdown(f"""
+    report_html = f"""
     <div style="background: white; color: black; padding: 25px; border-radius: 8px; font-family: sans-serif; direction: rtl;">
         <h2 style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px;">דוח פיקוח ותשתיות צומת</h2>
         
@@ -774,4 +775,7 @@ with tab2:
         <h4>הערות מפקח:</h4>
         <p style="background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #ddd;">{notes or 'אין הערות נוספות.'}</p>
     </div>
-    """, unsafe_allow_html=True)
+    """
+    # dedent - Markdown treats 4+ space indented lines as a literal code block,
+    # which is exactly what caused the raw HTML to show up as text instead of rendering.
+    st.markdown(textwrap.dedent(report_html), unsafe_allow_html=True)
