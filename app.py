@@ -205,11 +205,9 @@ HTML_CODE = """
     </div>
   </div>
 </div>
-
 <div class="footer-credits">
   כל הזכויות שמורות לנתנאל הררי | 054-5520445
 </div>
-
 <!-- Modal: פרטי הדוח -->
 <div class="modal-overlay hidden" id="reportModal">
   <div class="modal-box">
@@ -248,7 +246,6 @@ HTML_CODE = """
     </div>
   </div>
 </div>
-
 <script>
 const SVG_NS = "http://www.w3.org/2000/svg";
 const ELEMENT_TYPES = [
@@ -268,7 +265,6 @@ const ELEMENT_TYPES = [
   { id: "laneExtension", label: "נתיב נוסף / הרחבה", icon: () => `<rect x="-18" y="-10" width="36" height="20" fill="#334155" stroke="#475569" stroke-dasharray="2 2"/>` },
   { id: "stopLine", label: "קו עצירה לבן", icon: () => `<rect x="-16" y="-3" width="32" height="6" fill="#ffffff"/>` },
   { id: "paintedIsland", label: "שטח הפרדה מבוצע", icon: () => `<g><polygon points="-14,-8 14,-8 10,8 -10,8" fill="none" stroke="#ffffff" stroke-width="1"/><line x1="-8" y1="-8" x2="-4" y2="8" stroke="#fff"/><line x1="0" y1="-8" x2="4" y2="8" stroke="#fff"/><line x1="8" y1="-8" x2="12" y2="8" stroke="#fff"/></g>` },
-
   // חצי סימון כביש
   { id: "arrowStraight", label: "חץ ישר", icon: () => `<path d="M-2,8 L-2,-4 L-6,-4 L0,-14 L6,-4 L2,-4 L2,8 Z" fill="#ffffff"/>` },
   { id: "arrowLeft", label: "חץ שמאלה", icon: () => `<path d="M3,8 L3,-1 L-3,-1 L-3,-5 L-9,0 L-3,5 L-3,2 L0,2 L0,8 Z" fill="#ffffff"/>` },
@@ -276,13 +272,10 @@ const ELEMENT_TYPES = [
   { id: "arrowStraightLeft", label: "חץ ישר + שמאל", icon: () => `<path d="M-2,8 L-2,0 L-5,0 L-5,-4 L-11,1 L-5,6 L-5,3 L-2,3 L-2,-4 L-6,-4 L0,-14 L6,-4 L2,-4 L2,8 Z" fill="#ffffff"/>` },
   { id: "arrowStraightRight", label: "חץ ישר + ימין", icon: () => `<path d="M-2,8 L-2,-4 L-6,-4 L0,-14 L6,-4 L2,-4 L2,3 L5,3 L5,6 L11,1 L5,-4 L5,0 L2,0 L2,8 Z" fill="#ffffff"/>` }
 ];
-
 const ACTIONS = ["add", "remove", "dismantle"];
 const ACTION_LABEL = { add: "הוספה", remove: "הסרה", dismantle: "פירוק" };
 const ACTION_COLOR = { add: "#2f9e8f", remove: "#d8555a", dismantle: "#d99a2b" };
-
 const state = { shape: "X", elements: [], nextId: 1 };
-
 document.addEventListener("DOMContentLoaded", () => {
   renderPalette();
   renderJunctionBase();
@@ -292,7 +285,6 @@ document.addEventListener("DOMContentLoaded", () => {
   bindReportModal();
   renderBoqTable();
 });
-
 function renderPalette() {
   const wrap = document.getElementById("paletteItems");
   wrap.innerHTML = "";
@@ -309,7 +301,6 @@ function renderPalette() {
     wrap.appendChild(item);
   });
 }
-
 function bindJunctionToggle() {
   const toggle = document.getElementById("junctionToggle");
   toggle.querySelectorAll(".junction-toggle__btn").forEach(btn => {
@@ -321,7 +312,6 @@ function bindJunctionToggle() {
     });
   });
 }
-
 function renderJunctionBase() {
   const svg = document.getElementById("sketchSvg");
   let base = svg.querySelector("#baseLayer");
@@ -329,10 +319,8 @@ function renderJunctionBase() {
   base = document.createElementNS(SVG_NS, "g");
   base.setAttribute("id", "baseLayer");
   svg.insertBefore(base, svg.firstChild);
-
   for (let x = 0; x <= 800; x += 40) base.appendChild(line(x, 0, x, 600, "grid-line"));
   for (let y = 0; y <= 600; y += 40) base.appendChild(line(0, y, 800, y, "grid-line"));
-
   const ROAD_W = 140, cx = 400, cy = 300;
   if (state.shape === "X") {
     base.appendChild(rect(cx - ROAD_W/2, 0, ROAD_W, 600, "road"));
@@ -341,7 +329,6 @@ function renderJunctionBase() {
     base.appendChild(line(cx, cy + ROAD_W/2, cx, 600, "lane-dash"));
     base.appendChild(line(0, cy, cx - ROAD_W/2, cy, "lane-dash"));
     base.appendChild(line(cx + ROAD_W/2, cy, 800, cy, "lane-dash"));
-
     drawZebraCrossing(base, cx, cy - ROAD_W/2 - 25, ROAD_W, true);
     drawZebraCrossing(base, cx, cy + ROAD_W/2 + 25, ROAD_W, true);
     drawZebraCrossing(base, cx + ROAD_W/2 + 25, cy, ROAD_W, false);
@@ -352,13 +339,11 @@ function renderJunctionBase() {
     base.appendChild(line(cx, 0, cx, cy - ROAD_W/2, "lane-dash"));
     base.appendChild(line(0, cy, cx - ROAD_W/2, cy, "lane-dash"));
     base.appendChild(line(cx + ROAD_W/2, cy, 800, cy, "lane-dash"));
-
     drawZebraCrossing(base, cx, cy - ROAD_W/2 - 25, ROAD_W, true);
     drawZebraCrossing(base, cx + ROAD_W/2 + 25, cy, ROAD_W, false);
     drawZebraCrossing(base, cx - ROAD_W/2 - 25, cy, ROAD_W, false);
   }
 }
-
 function drawZebraCrossing(base, x, y, roadWidth, vertical) {
   const g = document.createElementNS(SVG_NS, "g");
   g.setAttribute("class", "crosswalk-base");
@@ -375,21 +360,18 @@ function drawZebraCrossing(base, x, y, roadWidth, vertical) {
   }
   base.appendChild(g);
 }
-
 function line(x1,y1,x2,y2,cls){
   const el = document.createElementNS(SVG_NS,"line");
   el.setAttribute("x1",x1); el.setAttribute("y1",y1);
   el.setAttribute("x2",x2); el.setAttribute("y2",y2);
   el.setAttribute("class",cls); return el;
 }
-
 function rect(x,y,w,h,cls){
   const el = document.createElementNS(SVG_NS,"rect");
   el.setAttribute("x",x); el.setAttribute("y",y);
   el.setAttribute("width",w); el.setAttribute("height",h);
   el.setAttribute("class",cls); return el;
 }
-
 function bindCanvasDropTarget() {
   const svg = document.getElementById("sketchSvg");
   svg.addEventListener("dragover", e => e.preventDefault());
@@ -402,14 +384,12 @@ function bindCanvasDropTarget() {
     addElement(type.id, pt.x, pt.y);
   });
 }
-
 function clientToSvgPoint(svg, clientX, clientY) {
   const p = svg.createSVGPoint();
   p.x = clientX; p.y = clientY;
   const ctm = svg.getScreenCTM().inverse();
   return p.matrixTransform(ctm);
 }
-
 function addElement(typeId, x, y) {
   const el = { id: state.nextId++, type: typeId, x, y, action: "add", rotation: 0 };
   state.elements.push(el);
@@ -417,7 +397,6 @@ function addElement(typeId, x, y) {
   renderBoqTable();
   updateCanvasCount();
 }
-
 function renderPlacedElement(elData) {
   const svg = document.getElementById("sketchSvg");
   const type = ELEMENT_TYPES.find(t => t.id === elData.type);
@@ -425,23 +404,19 @@ function renderPlacedElement(elData) {
   g.setAttribute("class", "placed-el");
   g.dataset.id = elData.id;
   g.setAttribute("transform", `translate(${elData.x},${elData.y})`);
-
   const ring = document.createElementNS(SVG_NS, "circle");
   ring.setAttribute("cx", 0); ring.setAttribute("cy", 0); ring.setAttribute("r", 20);
   ring.setAttribute("fill", "none"); ring.setAttribute("stroke", ACTION_COLOR[elData.action]);
   ring.setAttribute("stroke-width", 2.5); ring.setAttribute("class", "action-ringui");
   g.appendChild(ring);
-
   const iconGroup = document.createElementNS(SVG_NS, "g");
   iconGroup.setAttribute("transform", `rotate(${elData.rotation || 0})`);
   iconGroup.innerHTML = type.icon();
   g.appendChild(iconGroup);
-
   const label = document.createElementNS(SVG_NS, "text");
   label.setAttribute("class", "el-label el-labelui"); label.setAttribute("y", 32);
   label.textContent = labelText(type, elData);
   g.appendChild(label);
-
   // כפתור מחיקה
   const delCircle = document.createElementNS(SVG_NS, "circle");
   delCircle.setAttribute("class", "el-remove el-removeui");
@@ -450,7 +425,6 @@ function renderPlacedElement(elData) {
   delX.setAttribute("class", "el-remove-x el-removeui");
   delX.setAttribute("x", 16); delX.setAttribute("y", -19.5); delX.textContent = "×";
   g.appendChild(delCircle); g.appendChild(delX);
-
   // כפתור סיבוב
   const rotCircle = document.createElementNS(SVG_NS, "circle");
   rotCircle.setAttribute("class", "el-rotui");
@@ -464,11 +438,9 @@ function renderPlacedElement(elData) {
   rotText.style.pointerEvents = "none";
   rotText.textContent = "↺";
   g.appendChild(rotCircle); g.appendChild(rotText);
-
   rotCircle.addEventListener("click", (e) => { e.stopPropagation(); rotateElement(elData.id); });
   delCircle.addEventListener("click", (e) => { e.stopPropagation(); removeElement(elData.id); });
   iconGroup.addEventListener("click", (e) => { e.stopPropagation(); cycleAction(elData.id); });
-
   let dragging = false;
   g.addEventListener("pointerdown", (e) => {
     if (e.target === delCircle || e.target === delX || e.target === rotCircle) return;
@@ -483,7 +455,6 @@ function renderPlacedElement(elData) {
   g.addEventListener("pointerup", () => { dragging = false; });
   svg.appendChild(g);
 }
-
 function cycleAction(id) {
   const el = state.elements.find(e => e.id === id);
   if (!el) return;
@@ -492,18 +463,15 @@ function cycleAction(id) {
   redrawElement(el);
   renderBoqTable();
 }
-
 function rotateElement(id) {
   const el = state.elements.find(e => e.id === id);
   if (!el) return;
   el.rotation = ((el.rotation || 0) + 90) % 360;
   redrawElement(el);
 }
-
 function labelText(type, elData) {
   return `${type.label} · ${ACTION_LABEL[elData.action]}`;
 }
-
 function removeElement(id) {
   state.elements = state.elements.filter(e => e.id !== id);
   const svg = document.getElementById("sketchSvg");
@@ -512,18 +480,15 @@ function removeElement(id) {
   renderBoqTable();
   updateCanvasCount();
 }
-
 function redrawElement(elData) {
   const svg = document.getElementById("sketchSvg");
   const g = svg.querySelector(`.placed-el[data-id="${elData.id}"]`);
   if (g) g.remove();
   renderPlacedElement(elData);
 }
-
 function updateCanvasCount() {
   document.getElementById("canvasCount").textContent = `${state.elements.length} אלמנטים בסקיצה`;
 }
-
 function bindClearButton() {
   document.getElementById("clearCanvas").addEventListener("click", () => {
     if (state.elements.length && !confirm("לנקות את כל האלמנטים מהסקיצה?")) return;
@@ -533,7 +498,6 @@ function bindClearButton() {
     updateCanvasCount();
   });
 }
-
 function computeBoq() {
   return ELEMENT_TYPES.map(type => {
     const counts = { add: 0, remove: 0, dismantle: 0 };
@@ -541,7 +505,6 @@ function computeBoq() {
     return { label: type.label, ...counts };
   });
 }
-
 function renderBoqTable() {
   const tbody = document.querySelector("#boqTable tbody");
   tbody.innerHTML = "";
@@ -558,7 +521,6 @@ function renderBoqTable() {
     tbody.appendChild(tr);
   });
 }
-
 function bindReportModal() {
   const modal = document.getElementById("reportModal");
   document.getElementById("openReportBtn").addEventListener("click", () => {
@@ -573,7 +535,6 @@ function bindReportModal() {
     modal.classList.add("hidden");
   });
 }
-
 function generateReport() {
   const site = document.getElementById("rptSite").value || "—";
   const inspector = document.getElementById("rptInspector").value || "—";
@@ -581,20 +542,17 @@ function generateReport() {
   const cableOverhead = document.getElementById("rptCableOverhead").value || "0";
   const cableUnderground = document.getElementById("rptCableUnderground").value || "0";
   const notes = document.getElementById("rptNotes").value || "אין הערות נוספות.";
-
   const svgEl = document.getElementById("sketchSvg");
   const svgClone = svgEl.cloneNode(true);
   
   // הסרת אלמנטים של עריכה מהדוח
   svgClone.querySelectorAll('.action-ringui, .el-labelui, .el-removeui, .el-rotui').forEach(el => el.remove());
-
   svgClone.setAttribute("xmlns", SVG_NS);
   svgClone.style.background = "#0f172a";
   svgClone.style.width = "100%";
   svgClone.style.maxWidth = "760px";
   svgClone.style.height = "auto";
   const svgMarkup = new XMLSerializer().serializeToString(svgClone);
-
   const boqRows = computeBoq().map(row => {
     const total = row.add + row.remove + row.dismantle;
     if (total === 0) return "";
@@ -605,7 +563,6 @@ function generateReport() {
       <td>${row.dismantle || "-"}</td>
     </tr>`;
   }).join("");
-
   const reportHtml = `
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
@@ -653,14 +610,12 @@ function generateReport() {
     <p>כבל עילי: ${cableOverhead} מטר &nbsp;|&nbsp; כבל תת-קרקעי: ${cableUnderground} מטר</p>
     <h3>הערות מפקח</h3>
     <div class="notes-box">${notes}</div>
-
     <div class="credits">
       כל הזכויות שמורות לנתנאל הררי | 054-5520445
     </div>
   </div>
 </body>
 </html>`;
-
   const win = window.open("", "_blank");
   if (!win) { alert("הדפדפן חסם את פתיחת החלון החדש. יש לאשר חלונות קופצים עבור עמוד זה."); return; }
   win.document.open();
@@ -677,12 +632,15 @@ function generateReport() {
 # -----------------------------------------------------------------------------
 st.title("🚦 מחולל סקיצות צומת ודוח כתב כמויות")
 
-def get_image_base64(file_obj):
-    if file_obj is not None:
-        bytes_data = file_obj.getvalue()
-        base64_str = base64.b64encode(bytes_data).decode()
-        return f"data:image/png;base64,{base64_str}"
-    return None
+def get_images_base64(files_list):
+    """פונקציה המקבלת רשימת קבצים ומחזירה רשימת מחרוזות Base64"""
+    b64_list = []
+    if files_list:
+        for file_obj in files_list:
+            bytes_data = file_obj.getvalue()
+            base64_str = base64.b64encode(bytes_data).decode()
+            b64_list.append(f"data:image/png;base64,{base64_str}")
+    return b64_list
 
 with st.sidebar:
     st.header("📋 פרטי דוח הפיקוח")
@@ -695,10 +653,11 @@ with st.sidebar:
     cable_underground = st.number_input("כבל תת-קרקעי (מטרים)", min_value=0, value=0, step=5)
     
     st.subheader("📸 תיעוד בתמונות")
-    img_before = st.file_uploader("צילום לפני הסדר", type=["png", "jpg", "jpeg"])
-    img_after = st.file_uploader("צילום אחרי הסדר", type=["png", "jpg", "jpeg"])
-    img_cabinet = st.file_uploader("ארון רמזורים / מנגנון", type=["png", "jpg", "jpeg"])
-    img_grounding = st.file_uploader("חיבורי הארקה", type=["png", "jpg", "jpeg"])
+    # העלאה מרובת תמונות בעזרת accept_multiple_files=True
+    imgs_before = st.file_uploader("צילום לפני הסדר", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
+    imgs_after = st.file_uploader("צילום אחרי הסדר", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
+    imgs_cabinet = st.file_uploader("ארון רמזורים / מנגנון", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
+    imgs_grounding = st.file_uploader("חיבורי הארקה", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
     
     notes = st.text_area("הערות נוספות לדוח", placeholder="פירוט תקלות, דגשים לביצוע...")
 
@@ -711,30 +670,34 @@ with tab2:
     st.subheader("תצוגת דוח סופי להדפסה")
     st.info("💡 להדפסה או שמירה כ-PDF, לחץ Ctrl+P במקלדת (או Cmd+P ב-Mac)")
     
-    # הפיכת תמונות לקישור Base64 לתצוגה
-    b64_before = get_image_base64(img_before)
-    b64_after = get_image_base64(img_after)
-    b64_cabinet = get_image_base64(img_cabinet)
-    b64_grounding = get_image_base64(img_grounding)
+    # הפיכת רשימות התמונות לקישורי Base64
+    b64_before = get_images_base64(imgs_before)
+    b64_after = get_images_base64(imgs_after)
+    b64_cabinet = get_images_base64(imgs_cabinet)
+    b64_grounding = get_images_base64(imgs_grounding)
     
-    images_html = ""
-    photos_list = [
+    photos_categories = [
         ("צילום לפני הסדר", b64_before),
         ("צילום אחרי הסדר", b64_after),
         ("ארון רמזורים / מנגנון", b64_cabinet),
         ("חיבורי הארקה", b64_grounding)
     ]
     
-    has_photos = any(img[1] is not None for img in photos_list)
+    # בדיקה האם הועלו תמונות בכלל
+    has_photos = any(len(b64_list) > 0 for _, b64_list in photos_categories)
     
+    images_html = ""
     if has_photos:
-        images_html += "<h4 style='margin-top:20px;'>📸 תיעוד מצולם מהשטח:</h4><div style='display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;'>"
-        for title, img_data in photos_list:
-            if img_data:
+        images_html += "<h4 style='margin-top:20px;'>📸 תיעוד מצולם מהשטח:</h4>"
+        images_html += "<div style='display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 10px;'>"
+        
+        for cat_title, b64_list in photos_categories:
+            for idx, img_data in enumerate(b64_list):
+                label_suffix = f" ({idx + 1})" if len(b64_list) > 1 else ""
                 images_html += f"""
                 <div style="border: 1px solid #ccc; padding: 8px; border-radius: 6px; text-align: center; background: #fafafa;">
-                    <strong style="display:block; margin-bottom: 5px; font-size:0.9rem;">{title}</strong>
-                    <img src="{img_data}" style="max-width: 100%; max-height: 220px; border-radius: 4px; object-fit: contain;">
+                    <strong style="display:block; margin-bottom: 5px; font-size:0.85rem;">{cat_title}{label_suffix}</strong>
+                    <img src="{img_data}" style="max-width: 100%; max-height: 180px; border-radius: 4px; object-fit: contain;">
                 </div>
                 """
         images_html += "</div>"
