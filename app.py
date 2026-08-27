@@ -137,6 +137,44 @@ HTML_CODE = """
       .app-container { display: block; }
       body { background: white; color: black; }
     }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #0f172a;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .toolbar-actions { display: flex; gap: 8px; }
+
+    /* Modal לטופס פרטי הדוח */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal-box {
+      background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px;
+      padding: 20px; width: 420px; max-width: 90%; display: flex; flex-direction: column; gap: 10px;
+      max-height: 85vh; overflow-y: auto;
+    }
+    .modal-box h3 { color: var(--primary); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+    .modal-field { display: flex; flex-direction: column; gap: 4px; }
+    .modal-field label { font-size: 0.85rem; color: var(--text-muted); }
+    .modal-field input, .modal-field textarea {
+      background: #0f172a; border: 1px solid var(--border-color); border-radius: 6px;
+      padding: 7px 9px; color: var(--text-main); font-size: 0.9rem; font-family: inherit;
+    }
+    .modal-row { display: flex; gap: 10px; }
+    .modal-row .modal-field { flex: 1; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+    .btn-secondary {
+      background: #0f172a; border: 1px solid var(--border-color); color: var(--text-main);
+      padding: 8px 16px; border-radius: 6px; cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -156,7 +194,10 @@ HTML_CODE = """
         <button class="junction-toggle__btn" data-shape="T">צומת T</button>
       </div>
       <span id="canvasCount" style="color: var(--text-muted); font-size: 0.9rem;">0 אלמנטים בסקיצה</span>
-      <button class="btn-danger" id="clearCanvas">ניקוי סקיצה</button>
+      <div class="toolbar-actions">
+        <button class="btn-primary" id="openReportBtn">📄 הפקת דוח</button>
+        <button class="btn-danger" id="clearCanvas">ניקוי סקיצה</button>
+      </div>
     </div>
 
     <div class="canvas-container">
@@ -181,19 +222,54 @@ HTML_CODE = """
   </div>
 </div>
 
+<!-- Modal: פרטי הדוח -->
+<div class="modal-overlay hidden" id="reportModal">
+  <div class="modal-box">
+    <h3>פרטי דוח הפיקוח</h3>
+    <div class="modal-field">
+      <label>שם האתר / צומת</label>
+      <input type="text" id="rptSite" placeholder="לדוגמה: צומת אלנבי / רוטשילד">
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>שם המפקח</label>
+        <input type="text" id="rptInspector" placeholder="שם מלא">
+      </div>
+      <div class="modal-field">
+        <label>תאריך בדיקה</label>
+        <input type="date" id="rptDate">
+      </div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field">
+        <label>כבל עילי (מטרים)</label>
+        <input type="number" id="rptCableOverhead" min="0" step="5" value="0">
+      </div>
+      <div class="modal-field">
+        <label>כבל תת-קרקעי (מטרים)</label>
+        <input type="number" id="rptCableUnderground" min="0" step="5" value="0">
+      </div>
+    </div>
+    <div class="modal-field">
+      <label>הערות נוספות</label>
+      <textarea id="rptNotes" rows="3" placeholder="פירוט תקלות, דגשים לביצוע..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="closeReportBtn">ביטול</button>
+      <button class="btn-primary" id="generateReportBtn">צור דוח</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 const ELEMENT_TYPES = [
   { id: "trafficLight", label: "רמזור תנועה", icon: () => `<rect x="-6" y="-16" width="12" height="30" rx="2" fill="#2b2b2b"/><circle cx="0" cy="-10" r="3.2" fill="#d8555a"/><circle cx="0" cy="-2" r="3.2" fill="#d99a2b"/><circle cx="0" cy="6" r="3.2" fill="#2f9e8f"/>` },
   { id: "pedLight", label: "רמזור הולכי רגל", icon: () => `<rect x="-6" y="-13" width="12" height="24" rx="2" fill="#2b2b2b"/><circle cx="0" cy="-6" r="3.4" fill="#d8555a"/><circle cx="0" cy="3" r="3.4" fill="#2f9e8f"/>` },
-  { id: "lrtLight", label: "רמזור רק\"ל (רכבת)", icon: () => `<rect x="-6" y="-16" width="12" height="30" rx="2" fill="#2b2b2b"/><line x1="-3" y1="-10" x2="3" y2="-10" stroke="#fff" stroke-width="2"/><polygon points="0,-4 -3,2 3,2" fill="#fff"/><circle cx="0" cy="6" r="2.5" fill="#fff"/>` },
-  { id: "blinker", label: "מהבהב", icon: () => `<rect x="-2.5" y="-14" width="5" height="16" fill="#2b2b2b"/><circle cx="0" cy="-16" r="5.5" fill="#d99a2b"/><line x1="0" y1="-24" x2="0" y2="-20" stroke="#d99a2b" stroke-width="2"/><line x1="-7" y1="-21" x2="-4.5" y2="-19" stroke="#d99a2b" stroke-width="2"/><line x1="7" y1="-21" x2="4.5" y2="-19" stroke="#d99a2b" stroke-width="2"/>` },
-  { id: "arrowStraight", label: "חץ ישר", icon: () => `<path d="M0 10 L0 -10 M-5 -4 L0 -12 L5 -4" stroke="#e9edf3" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` },
-  { id: "arrowLeft", label: "חץ שמאלה", icon: () => `<path d="M5 10 L5 -2 Q5 -8 -2 -8 L-10 -8 M-4 -13 L-12 -8 L-4 -3" stroke="#e9edf3" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` },
-  { id: "arrowRight", label: "חץ ימינה", icon: () => `<path d="M-5 10 L-5 -2 Q-5 -8 2 -8 L10 -8 M4 -13 L12 -8 L4 -3" stroke="#e9edf3" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` },
-  { id: "arrowStraightLeft", label: "חץ ישר ושמאלה", icon: () => `<path d="M3 10 L3 -8 M-2 -2 L3 -8 L8 -2 M3 -2 Q3 -6 -3 -6 L-10 -6 M-5 -11 L-12 -6 L-5 -1" stroke="#e9edf3" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` },
   { id: "crosswalk", label: "מעבר חציה", icon: () => `<g><rect x="-16" y="-8" width="32" height="16" fill="none"/>${[-12,-4,4,12].map(x=>`<rect x="${x-2.5}" y="-8" width="5" height="16" fill="#e9edf3"/>`).join("")}</g>` },
+  { id: "blinker", label: "מהבהב", icon: () => `<rect x="-2.5" y="-14" width="5" height="16" fill="#2b2b2b"/><circle cx="0" cy="-16" r="5.5" fill="#d99a2b"/><line x1="0" y1="-24" x2="0" y2="-20" stroke="#d99a2b" stroke-width="2"/><line x1="-7" y1="-21" x2="-4.5" y2="-19" stroke="#d99a2b" stroke-width="2"/><line x1="7" y1="-21" x2="4.5" y2="-19" stroke="#d99a2b" stroke-width="2"/>` },
+  { id: "railLight", label: "פנס רק\\"ל", icon: () => `<rect x="-7" y="-18" width="14" height="30" rx="2" fill="#2b2b2b"/><rect x="-4" y="-13" width="8" height="3" fill="#f8fafc"/><rect x="-4" y="-6.5" width="8" height="3" fill="#f8fafc"/><rect x="-4" y="0" width="8" height="3" fill="#f8fafc"/>` },
   { id: "poleConcrete", label: "עמוד בטון", icon: () => `<circle cx="0" cy="0" r="9" fill="#9aa3ad" stroke="#5c636b" stroke-width="1.5"/>` },
   { id: "poleWood", label: "עמוד עץ", icon: () => `<circle cx="0" cy="0" r="9" fill="#a9784f" stroke="#6e4c2f" stroke-width="1.5"/>` },
   { id: "camera", label: "מצלמה", icon: () => `<rect x="-9" y="-6" width="18" height="12" rx="2" fill="#2b2b2b"/><circle cx="6" cy="0" r="4" fill="#111"/><circle cx="6" cy="0" r="1.6" fill="#4fb3ff"/>` },
@@ -204,6 +280,31 @@ const ACTIONS = ["add", "remove", "dismantle"];
 const ACTION_LABEL = { add: "הוספה", remove: "הסרה", dismantle: "פירוק" };
 const ACTION_COLOR = { add: "#2f9e8f", remove: "#d8555a", dismantle: "#d99a2b" };
 
+// אלמנטים שמקבלים חץ הכוונה (פנסים בלבד)
+const HAS_DIRECTION = ["trafficLight", "railLight", "blinker"];
+const DIRECTIONS = ["none", "straight", "left", "right", "straight-left", "straight-right", "left-right", "all"];
+const DIRECTION_LABEL = {
+  "none": "ללא הכוונה",
+  "straight": "ישר",
+  "left": "שמאלה",
+  "right": "ימינה",
+  "straight-left": "ישר + שמאל",
+  "straight-right": "ישר + ימין",
+  "left-right": "שמאל + ימין",
+  "all": "כל הכיוונים"
+};
+// זווית (במעלות, 0=למעלה/ישר) לכל חץ שצריך להצטייר עבור כל כיוון
+const DIRECTION_ARROWS = {
+  "none": [],
+  "straight": [0],
+  "left": [-45],
+  "right": [45],
+  "straight-left": [-45, 0],
+  "straight-right": [0, 45],
+  "left-right": [-45, 45],
+  "all": [-45, 0, 45]
+};
+
 const state = { shape: "X", elements: [], nextId: 1 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -212,6 +313,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindJunctionToggle();
   bindCanvasDropTarget();
   bindClearButton();
+  bindReportModal();
   renderBoqTable();
 });
 
@@ -244,29 +346,6 @@ function bindJunctionToggle() {
   });
 }
 
-// ציור מעבר חציה מובנה כחלק מהתשתית
-function drawDefaultCrosswalk(base, x, y, isVertical) {
-  const g = document.createElementNS(SVG_NS, "g");
-  g.setAttribute("transform", `translate(${x},${y}) ${isVertical ? 'rotate(90)' : ''}`);
-  
-  const width = 120;
-  const stripeWidth = 8;
-  const gap = 8;
-  const startX = -width / 2;
-  
-  for (let offset = startX; offset <= width/2 - stripeWidth; offset += stripeWidth + gap) {
-    const r = document.createElementNS(SVG_NS, "rect");
-    r.setAttribute("x", offset);
-    r.setAttribute("y", -18);
-    r.setAttribute("width", stripeWidth);
-    r.setAttribute("height", 36);
-    r.setAttribute("fill", "#e9edf3");
-    r.setAttribute("opacity", "0.85");
-    g.appendChild(r);
-  }
-  base.appendChild(g);
-}
-
 function renderJunctionBase() {
   const svg = document.getElementById("sketchSvg");
   let base = svg.querySelector("#baseLayer");
@@ -276,7 +355,6 @@ function renderJunctionBase() {
   base.setAttribute("id", "baseLayer");
   svg.insertBefore(base, svg.firstChild);
 
-  // רשת עזר
   for (let x = 0; x <= 800; x += 40) base.appendChild(line(x, 0, x, 600, "grid-line"));
   for (let y = 0; y <= 600; y += 40) base.appendChild(line(0, y, 800, y, "grid-line"));
 
@@ -289,24 +367,41 @@ function renderJunctionBase() {
     base.appendChild(line(cx, cy + ROAD_W/2, cx, 600, "lane-dash"));
     base.appendChild(line(0, cy, cx - ROAD_W/2, cy, "lane-dash"));
     base.appendChild(line(cx + ROAD_W/2, cy, 800, cy, "lane-dash"));
-
-    // מעברי חצייה קיימים מראש - 4 כיוונים
-    drawDefaultCrosswalk(base, cx, cy - ROAD_W/2 - 25, false); // צפון
-    drawDefaultCrosswalk(base, cx, cy + ROAD_W/2 + 25, false); // דרום
-    drawDefaultCrosswalk(base, cx - ROAD_W/2 - 25, cy, true);  // מערב
-    drawDefaultCrosswalk(base, cx + ROAD_W/2 + 25, cy, true);  // מזרח
+    // מעברי חציה קבועים בכל אחת מ-4 הזרועות
+    drawZebraCrossing(base, cx, cy - ROAD_W/2 - 25, ROAD_W, true);
+    drawZebraCrossing(base, cx, cy + ROAD_W/2 + 25, ROAD_W, true);
+    drawZebraCrossing(base, cx + ROAD_W/2 + 25, cy, ROAD_W, false);
+    drawZebraCrossing(base, cx - ROAD_W/2 - 25, cy, ROAD_W, false);
   } else {
     base.appendChild(rect(0, cy - ROAD_W/2, 800, ROAD_W, "road"));
     base.appendChild(rect(cx - ROAD_W/2, 0, ROAD_W, cy + ROAD_W/2, "road"));
     base.appendChild(line(cx, 0, cx, cy - ROAD_W/2, "lane-dash"));
     base.appendChild(line(0, cy, cx - ROAD_W/2, cy, "lane-dash"));
     base.appendChild(line(cx + ROAD_W/2, cy, 800, cy, "lane-dash"));
-
-    // מעברי חצייה קיימים מראש - צומת T (3 כיוונים)
-    drawDefaultCrosswalk(base, cx, cy - ROAD_W/2 - 25, false); // צפון
-    drawDefaultCrosswalk(base, cx - ROAD_W/2 - 25, cy, true);  // מערב
-    drawDefaultCrosswalk(base, cx + ROAD_W/2 + 25, cy, true);  // מזרח
+    // מעברי חציה קבועים ב-3 הזרועות של צומת T (מזרח, מערב, צפון)
+    drawZebraCrossing(base, cx, cy - ROAD_W/2 - 25, ROAD_W, true);
+    drawZebraCrossing(base, cx + ROAD_W/2 + 25, cy, ROAD_W, false);
+    drawZebraCrossing(base, cx - ROAD_W/2 - 25, cy, ROAD_W, false);
   }
+}
+
+// מציר מעבר חציה (פסי זברה) קבוע כחלק מהסקיצה הבסיסית, לא אלמנט הניתן לגרירה.
+// vertical=true means the crosswalk sits on a vertical road (stripes run horizontally, spread along y after rotation)
+function drawZebraCrossing(base, x, y, roadWidth, vertical) {
+  const g = document.createElementNS(SVG_NS, "g");
+  g.setAttribute("class", "crosswalk-base");
+  g.setAttribute("transform", `translate(${x},${y})${vertical ? " rotate(90)" : ""}`);
+  const stripeW = 6, gap = 6, count = 7;
+  const totalW = count * stripeW + (count - 1) * gap;
+  const startX = -totalW / 2;
+  for (let i = 0; i < count; i++) {
+    const sx = startX + i * (stripeW + gap);
+    const r = rect(sx, -roadWidth / 2 + 14, stripeW, roadWidth - 28, "");
+    r.setAttribute("fill", "#dfe6ee");
+    r.setAttribute("opacity", "0.85");
+    g.appendChild(r);
+  }
+  base.appendChild(g);
 }
 
 function line(x1,y1,x2,y2,cls){
@@ -344,6 +439,7 @@ function clientToSvgPoint(svg, clientX, clientY) {
 
 function addElement(typeId, x, y) {
   const el = { id: state.nextId++, type: typeId, x, y, action: "add" };
+  if (HAS_DIRECTION.includes(typeId)) el.direction = "straight";
   state.elements.push(el);
   renderPlacedElement(el);
   renderBoqTable();
@@ -369,9 +465,17 @@ function renderPlacedElement(elData) {
   icon.innerHTML = type.icon();
   g.appendChild(icon);
 
+  const supportsDirection = HAS_DIRECTION.includes(elData.type);
+  if (supportsDirection) {
+    const arrows = document.createElementNS(SVG_NS, "g");
+    arrows.setAttribute("class", "dir-arrows");
+    arrows.innerHTML = directionArrowsMarkup(elData.direction || "none");
+    g.appendChild(arrows);
+  }
+
   const label = document.createElementNS(SVG_NS, "text");
   label.setAttribute("class", "el-label"); label.setAttribute("y", 24);
-  label.textContent = `${type.label} · ${ACTION_LABEL[elData.action]}`;
+  label.textContent = labelText(type, elData);
   g.appendChild(label);
 
   const delCircle = document.createElementNS(SVG_NS, "circle");
@@ -382,6 +486,21 @@ function renderPlacedElement(elData) {
   delX.setAttribute("x", 16); delX.setAttribute("y", -19.5); delX.textContent = "×";
   
   g.appendChild(delCircle); g.appendChild(delX);
+
+  let dirCircle = null, dirIcon = null;
+  if (supportsDirection) {
+    dirCircle = document.createElementNS(SVG_NS, "circle");
+    dirCircle.setAttribute("cx", -16); dirCircle.setAttribute("cy", -22); dirCircle.setAttribute("r", 7);
+    dirCircle.setAttribute("fill", "var(--primary)"); dirCircle.style.cursor = "pointer";
+    dirIcon = document.createElementNS(SVG_NS, "text");
+    dirIcon.setAttribute("x", -16); dirIcon.setAttribute("y", -19.5);
+    dirIcon.setAttribute("fill", "#0f172a"); dirIcon.setAttribute("font-size", "9");
+    dirIcon.setAttribute("font-weight", "bold"); dirIcon.setAttribute("text-anchor", "middle");
+    dirIcon.style.pointerEvents = "none";
+    dirIcon.textContent = "↑";
+    g.appendChild(dirCircle); g.appendChild(dirIcon);
+    dirCircle.addEventListener("click", (e) => { e.stopPropagation(); cycleDirection(elData.id); });
+  }
 
   delCircle.addEventListener("click", (e) => { e.stopPropagation(); removeElement(elData.id); });
   icon.addEventListener("click", (e) => { e.stopPropagation(); cycleAction(elData.id); });
@@ -409,6 +528,33 @@ function cycleAction(id) {
   el.action = ACTIONS[(idx + 1) % ACTIONS.length];
   redrawElement(el);
   renderBoqTable();
+}
+
+function cycleDirection(id) {
+  const el = state.elements.find(e => e.id === id);
+  if (!el) return;
+  const idx = DIRECTIONS.indexOf(el.direction || "none");
+  el.direction = DIRECTIONS[(idx + 1) % DIRECTIONS.length];
+  redrawElement(el);
+}
+
+function arrowMarkup() {
+  return `<path d="M0,-9 L4,1 L1.5,1 L1.5,7 L-1.5,7 L-1.5,1 L-4,1 Z" fill="#38bdf8" stroke="#0f172a" stroke-width="0.5"/>`;
+}
+
+function directionArrowsMarkup(direction) {
+  const angles = DIRECTION_ARROWS[direction] || [];
+  if (!angles.length) return "";
+  const arrows = angles.map(a => `<g transform="rotate(${a})">${arrowMarkup()}</g>`).join("");
+  return `<g transform="translate(0,-34)">${arrows}</g>`;
+}
+
+function labelText(type, elData) {
+  let txt = `${type.label} · ${ACTION_LABEL[elData.action]}`;
+  if (HAS_DIRECTION.includes(elData.type) && elData.direction && elData.direction !== "none") {
+    txt += ` · ${DIRECTION_LABEL[elData.direction]}`;
+  }
+  return txt;
 }
 
 function removeElement(id) {
@@ -465,6 +611,110 @@ function renderBoqTable() {
     tbody.appendChild(tr);
   });
 }
+
+// -----------------------------------------------------------------------------
+// הפקת דוח מלא (סקיצה + פרטי אתר + כתב כמויות) לחלון נפרד המוכן להדפסה
+// -----------------------------------------------------------------------------
+function bindReportModal() {
+  const modal = document.getElementById("reportModal");
+  document.getElementById("openReportBtn").addEventListener("click", () => {
+    if (!document.getElementById("rptDate").value) {
+      document.getElementById("rptDate").value = new Date().toISOString().slice(0, 10);
+    }
+    modal.classList.remove("hidden");
+  });
+  document.getElementById("closeReportBtn").addEventListener("click", () => modal.classList.add("hidden"));
+  document.getElementById("generateReportBtn").addEventListener("click", () => {
+    generateReport();
+    modal.classList.add("hidden");
+  });
+}
+
+function generateReport() {
+  const site = document.getElementById("rptSite").value || "—";
+  const inspector = document.getElementById("rptInspector").value || "—";
+  const date = document.getElementById("rptDate").value || "—";
+  const cableOverhead = document.getElementById("rptCableOverhead").value || "0";
+  const cableUnderground = document.getElementById("rptCableUnderground").value || "0";
+  const notes = document.getElementById("rptNotes").value || "אין הערות נוספות.";
+
+  // שכפול הסקיצה הנוכחית (כולל כל האלמנטים שהוצבו) כתמונת SVG סטטית
+  const svgEl = document.getElementById("sketchSvg");
+  const svgClone = svgEl.cloneNode(true);
+  svgClone.setAttribute("xmlns", SVG_NS);
+  svgClone.style.background = "#0f172a";
+  svgClone.style.width = "100%";
+  svgClone.style.maxWidth = "760px";
+  svgClone.style.height = "auto";
+  const svgMarkup = new XMLSerializer().serializeToString(svgClone);
+
+  const boqRows = computeBoq().map(row => {
+    const total = row.add + row.remove + row.dismantle;
+    if (total === 0) return "";
+    return `<tr>
+      <td>${row.label}</td>
+      <td>${row.add || "-"}</td>
+      <td>${row.remove || "-"}</td>
+      <td>${row.dismantle || "-"}</td>
+    </tr>`;
+  }).join("");
+
+  const reportHtml = `
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<title>דוח פיקוח ותשתיות צומת - ${site}</title>
+<style>
+  * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+  body { background: #f1f5f9; color: #111827; padding: 30px; }
+  .sheet { background: white; max-width: 900px; margin: 0 auto; padding: 30px 35px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+  h1 { text-align: center; border-bottom: 3px solid #0f172a; padding-bottom: 12px; margin-bottom: 20px; }
+  .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  .meta-table td { padding: 6px 4px; font-size: 0.95rem; }
+  .sketch-box { background: #0f172a; border-radius: 10px; padding: 10px; text-align: center; margin-bottom: 20px; }
+  h3 { margin: 18px 0 8px; color: #0f172a; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px; }
+  table.boq { width: 100%; border-collapse: collapse; }
+  table.boq th, table.boq td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: center; font-size: 0.9rem; }
+  table.boq th { background: #0f172a; color: white; }
+  .notes-box { background: #f8f9fa; padding: 12px; border-radius: 6px; border: 1px solid #ddd; white-space: pre-wrap; }
+  .print-bar { text-align: center; margin-bottom: 20px; }
+  .print-bar button { background: #38bdf8; border: none; padding: 10px 22px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+  @media print { .print-bar { display: none; } body { background: white; padding: 0; } .sheet { box-shadow: none; } }
+</style>
+</head>
+<body>
+  <div class="print-bar"><button onclick="window.print()">🖨️ הדפס / שמור כ-PDF</button></div>
+  <div class="sheet">
+    <h1>דוח פיקוח ותשתיות צומת</h1>
+    <table class="meta-table">
+      <tr>
+        <td><strong>אתר:</strong> ${site}</td>
+        <td><strong>תאריך:</strong> ${date}</td>
+        <td><strong>מפקח:</strong> ${inspector}</td>
+      </tr>
+    </table>
+    <h3>סקיצת הצומת</h3>
+    <div class="sketch-box">${svgMarkup}</div>
+    <h3>כתב כמויות</h3>
+    <table class="boq">
+      <thead><tr><th>תיאור האלמנט</th><th>הוספה (יח')</th><th>הסרה (יח')</th><th>פירוק (יח')</th></tr></thead>
+      <tbody>${boqRows || '<tr><td colspan="4">לא הוצבו אלמנטים בסקיצה</td></tr>'}</tbody>
+    </table>
+    <h3>תשתיות כבלים</h3>
+    <p>כבל עילי: ${cableOverhead} מטר &nbsp;|&nbsp; כבל תת-קרקעי: ${cableUnderground} מטר</p>
+    <h3>הערות מפקח</h3>
+    <div class="notes-box">${notes}</div>
+  </div>
+</body>
+</html>`;
+
+  const win = window.open("", "_blank");
+  if (!win) { alert("הדפדפן חסם את פתיחת החלון החדש. יש לאשר חלונות קופצים עבור עמוד זה."); return; }
+  win.document.open();
+  win.document.write(reportHtml);
+  win.document.close();
+}
 </script>
 </body>
 </html>
@@ -488,7 +738,7 @@ with st.sidebar:
     
     notes = st.text_area("הערות נוספות לדוח", placeholder="פירוט תקלות, דגשים לביצוע...")
 
-# תצוגה ראשית: 2 טאבים
+# תצוגה ראשית: 2 טאבים (סקיצה אינטראקטיבית / הפקת דוח)
 tab1, tab2 = st.tabs(["🎨 סקיצה אינטראקטיבית", "📄 תצוגת דוח מלא להדפסה"])
 
 with tab1:
