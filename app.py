@@ -414,7 +414,7 @@ function renderPlacedElement(elData) {
   const ring = document.createElementNS(SVG_NS, "circle");
   ring.setAttribute("cx", 0); ring.setAttribute("cy", 0); ring.setAttribute("r", 20);
   ring.setAttribute("fill", "none"); ring.setAttribute("stroke", ACTION_COLOR[elData.action]);
-  ring.setAttribute("stroke-width", 2.5); ring.setAttribute("class", "action-ring");
+  ring.setAttribute("stroke-width", 2.5); ring.setAttribute("class", "action-ringui");
   g.appendChild(ring);
 
   const iconGroup = document.createElementNS(SVG_NS, "g");
@@ -423,24 +423,26 @@ function renderPlacedElement(elData) {
   g.appendChild(iconGroup);
 
   const label = document.createElementNS(SVG_NS, "text");
-  label.setAttribute("class", "el-label"); label.setAttribute("y", 32);
+  label.setAttribute("class", "el-label el-labelui"); label.setAttribute("y", 32);
   label.textContent = labelText(type, elData);
   g.appendChild(label);
 
   // כפתור מחיקה
   const delCircle = document.createElementNS(SVG_NS, "circle");
-  delCircle.setAttribute("class", "el-remove");
+  delCircle.setAttribute("class", "el-remove el-removeui");
   delCircle.setAttribute("cx", 16); delCircle.setAttribute("cy", -22); delCircle.setAttribute("r", 7);
   const delX = document.createElementNS(SVG_NS, "text");
-  delX.setAttribute("class", "el-remove-x");
+  delX.setAttribute("class", "el-remove-x el-removeui");
   delX.setAttribute("x", 16); delX.setAttribute("y", -19.5); delX.textContent = "×";
   g.appendChild(delCircle); g.appendChild(delX);
 
   // כפתור סיבוב כיוון (מסתובב ב-90 מעלות)
   const rotCircle = document.createElementNS(SVG_NS, "circle");
+  rotCircle.setAttribute("class", "el-rotui");
   rotCircle.setAttribute("cx", -16); rotCircle.setAttribute("cy", -22); rotCircle.setAttribute("r", 7);
   rotCircle.setAttribute("fill", "var(--primary)"); rotCircle.style.cursor = "pointer";
   const rotText = document.createElementNS(SVG_NS, "text");
+  rotText.setAttribute("class", "el-rotui");
   rotText.setAttribute("x", -16); rotText.setAttribute("y", -19.5);
   rotText.setAttribute("fill", "#0f172a"); rotText.setAttribute("font-size", "9");
   rotText.setAttribute("font-weight", "bold"); rotText.setAttribute("text-anchor", "middle");
@@ -567,6 +569,10 @@ function generateReport() {
 
   const svgEl = document.getElementById("sketchSvg");
   const svgClone = svgEl.cloneNode(true);
+  
+  // הסרת אלמנטים של ממשק העריכה (עיגולים, כפתורי סיבוב/מחיקה ותוויות) לקבלת סקיצה נקייה בדוח
+  svgClone.querySelectorAll('.action-ringui, .el-labelui, .el-removeui, .el-rotui').forEach(el => el.remove());
+
   svgClone.setAttribute("xmlns", SVG_NS);
   svgClone.style.background = "#0f172a";
   svgClone.style.width = "100%";
