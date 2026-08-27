@@ -187,8 +187,13 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const ELEMENT_TYPES = [
   { id: "trafficLight", label: "רמזור תנועה", icon: () => `<rect x="-6" y="-16" width="12" height="30" rx="2" fill="#2b2b2b"/><circle cx="0" cy="-10" r="3.2" fill="#d8555a"/><circle cx="0" cy="-2" r="3.2" fill="#d99a2b"/><circle cx="0" cy="6" r="3.2" fill="#2f9e8f"/>` },
   { id: "pedLight", label: "רמזור הולכי רגל", icon: () => `<rect x="-6" y="-13" width="12" height="24" rx="2" fill="#2b2b2b"/><circle cx="0" cy="-6" r="3.4" fill="#d8555a"/><circle cx="0" cy="3" r="3.4" fill="#2f9e8f"/>` },
-  { id: "crosswalk", label: "מעבר חציה", icon: () => `<g><rect x="-16" y="-8" width="32" height="16" fill="none"/>${[-12,-4,4,12].map(x=>`<rect x="${x-2.5}" y="-8" width="5" height="16" fill="#e9edf3"/>`).join("")}</g>` },
+  { id: "lrtLight", label: "רמזור רק\"ל (רכבת)", icon: () => `<rect x="-6" y="-16" width="12" height="30" rx="2" fill="#2b2b2b"/><line x1="-3" y1="-10" x2="3" y2="-10" stroke="#fff" stroke-width="2"/><polygon points="0,-4 -3,2 3,2" fill="#fff"/><circle cx="0" cy="6" r="2.5" fill="#fff"/>` },
   { id: "blinker", label: "מהבהב", icon: () => `<rect x="-2.5" y="-14" width="5" height="16" fill="#2b2b2b"/><circle cx="0" cy="-16" r="5.5" fill="#d99a2b"/><line x1="0" y1="-24" x2="0" y2="-20" stroke="#d99a2b" stroke-width="2"/><line x1="-7" y1="-21" x2="-4.5" y2="-19" stroke="#d99a2b" stroke-width="2"/><line x1="7" y1="-21" x2="4.5" y2="-19" stroke="#d99a2b" stroke-width="2"/>` },
+  { id: "arrowStraight", label: "חץ ישר", icon: () => `<path d="M0 10 L0 -10 M-5 -4 L0 -12 L5 -4" stroke="#e9edf3" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` },
+  { id: "arrowLeft", label: "חץ שמאלה", icon: () => `<path d="M5 10 L5 -2 Q5 -8 -2 -8 L-10 -8 M-4 -13 L-12 -8 L-4 -3" stroke="#e9edf3" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` },
+  { id: "arrowRight", label: "חץ ימינה", icon: () => `<path d="M-5 10 L-5 -2 Q-5 -8 2 -8 L10 -8 M4 -13 L12 -8 L4 -3" stroke="#e9edf3" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` },
+  { id: "arrowStraightLeft", label: "חץ ישר ושמאלה", icon: () => `<path d="M3 10 L3 -8 M-2 -2 L3 -8 L8 -2 M3 -2 Q3 -6 -3 -6 L-10 -6 M-5 -11 L-12 -6 L-5 -1" stroke="#e9edf3" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` },
+  { id: "crosswalk", label: "מעבר חציה", icon: () => `<g><rect x="-16" y="-8" width="32" height="16" fill="none"/>${[-12,-4,4,12].map(x=>`<rect x="${x-2.5}" y="-8" width="5" height="16" fill="#e9edf3"/>`).join("")}</g>` },
   { id: "poleConcrete", label: "עמוד בטון", icon: () => `<circle cx="0" cy="0" r="9" fill="#9aa3ad" stroke="#5c636b" stroke-width="1.5"/>` },
   { id: "poleWood", label: "עמוד עץ", icon: () => `<circle cx="0" cy="0" r="9" fill="#a9784f" stroke="#6e4c2f" stroke-width="1.5"/>` },
   { id: "camera", label: "מצלמה", icon: () => `<rect x="-9" y="-6" width="18" height="12" rx="2" fill="#2b2b2b"/><circle cx="6" cy="0" r="4" fill="#111"/><circle cx="6" cy="0" r="1.6" fill="#4fb3ff"/>` },
@@ -239,6 +244,29 @@ function bindJunctionToggle() {
   });
 }
 
+// ציור מעבר חציה מובנה כחלק מהתשתית
+function drawDefaultCrosswalk(base, x, y, isVertical) {
+  const g = document.createElementNS(SVG_NS, "g");
+  g.setAttribute("transform", `translate(${x},${y}) ${isVertical ? 'rotate(90)' : ''}`);
+  
+  const width = 120;
+  const stripeWidth = 8;
+  const gap = 8;
+  const startX = -width / 2;
+  
+  for (let offset = startX; offset <= width/2 - stripeWidth; offset += stripeWidth + gap) {
+    const r = document.createElementNS(SVG_NS, "rect");
+    r.setAttribute("x", offset);
+    r.setAttribute("y", -18);
+    r.setAttribute("width", stripeWidth);
+    r.setAttribute("height", 36);
+    r.setAttribute("fill", "#e9edf3");
+    r.setAttribute("opacity", "0.85");
+    g.appendChild(r);
+  }
+  base.appendChild(g);
+}
+
 function renderJunctionBase() {
   const svg = document.getElementById("sketchSvg");
   let base = svg.querySelector("#baseLayer");
@@ -248,6 +276,7 @@ function renderJunctionBase() {
   base.setAttribute("id", "baseLayer");
   svg.insertBefore(base, svg.firstChild);
 
+  // רשת עזר
   for (let x = 0; x <= 800; x += 40) base.appendChild(line(x, 0, x, 600, "grid-line"));
   for (let y = 0; y <= 600; y += 40) base.appendChild(line(0, y, 800, y, "grid-line"));
 
@@ -260,12 +289,23 @@ function renderJunctionBase() {
     base.appendChild(line(cx, cy + ROAD_W/2, cx, 600, "lane-dash"));
     base.appendChild(line(0, cy, cx - ROAD_W/2, cy, "lane-dash"));
     base.appendChild(line(cx + ROAD_W/2, cy, 800, cy, "lane-dash"));
+
+    // מעברי חצייה קיימים מראש - 4 כיוונים
+    drawDefaultCrosswalk(base, cx, cy - ROAD_W/2 - 25, false); // צפון
+    drawDefaultCrosswalk(base, cx, cy + ROAD_W/2 + 25, false); // דרום
+    drawDefaultCrosswalk(base, cx - ROAD_W/2 - 25, cy, true);  // מערב
+    drawDefaultCrosswalk(base, cx + ROAD_W/2 + 25, cy, true);  // מזרח
   } else {
     base.appendChild(rect(0, cy - ROAD_W/2, 800, ROAD_W, "road"));
     base.appendChild(rect(cx - ROAD_W/2, 0, ROAD_W, cy + ROAD_W/2, "road"));
     base.appendChild(line(cx, 0, cx, cy - ROAD_W/2, "lane-dash"));
     base.appendChild(line(0, cy, cx - ROAD_W/2, cy, "lane-dash"));
     base.appendChild(line(cx + ROAD_W/2, cy, 800, cy, "lane-dash"));
+
+    // מעברי חצייה קיימים מראש - צומת T (3 כיוונים)
+    drawDefaultCrosswalk(base, cx, cy - ROAD_W/2 - 25, false); // צפון
+    drawDefaultCrosswalk(base, cx - ROAD_W/2 - 25, cy, true);  // מערב
+    drawDefaultCrosswalk(base, cx + ROAD_W/2 + 25, cy, true);  // מזרח
   }
 }
 
@@ -448,7 +488,7 @@ with st.sidebar:
     
     notes = st.text_area("הערות נוספות לדוח", placeholder="פירוט תקלות, דגשים לביצוע...")
 
-# תצוגה ראשית: 2 טאבים (סקיצה אינטראקטיבית / הפקת דוח)
+# תצוגה ראשית: 2 טאבים
 tab1, tab2 = st.tabs(["🎨 סקיצה אינטראקטיבית", "📄 תצוגת דוח מלא להדפסה"])
 
 with tab1:
