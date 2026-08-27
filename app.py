@@ -1,9 +1,10 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import textwrap
+import base64
 
 st.set_page_config(
-    page_title="מחולל סקיצות צומת וכתב כמויות",
+    page_title="מחולל סקיצות צומת וכתב כמויות - נתנאל הררי",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -30,7 +31,7 @@ HTML_CODE = """
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
     body { background-color: var(--bg-color); color: var(--text-main); padding: 15px; }
-    .app-container { display: grid; grid-template-columns: 280px 1fr; gap: 20px; height: calc(100vh - 30px); }
+    .app-container { display: grid; grid-template-columns: 290px 1fr; gap: 20px; height: calc(100vh - 70px); }
     /* Palette Sidebar */
     .sidebar {
       background: var(--card-bg);
@@ -42,22 +43,22 @@ HTML_CODE = """
       gap: 12px;
       overflow-y: auto;
     }
-    .sidebar h3 { font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; color: var(--primary); }
+    .sidebar h3 { font-size: 1.05rem; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; color: var(--primary); }
     .palette-item {
       background: #0f172a;
       border: 1px solid var(--border-color);
       border-radius: 8px;
-      padding: 10px;
+      padding: 8px 10px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       cursor: grab;
       user-select: none;
       transition: all 0.2s;
     }
     .palette-item:hover { border-color: var(--primary); background: #1e293b; }
-    .palette-item svg { width: 32px; height: 32px; flex-shrink: 0; }
-    .palette-item span { font-size: 0.95rem; font-weight: 500; }
+    .palette-item svg { width: 30px; height: 30px; flex-shrink: 0; }
+    .palette-item span { font-size: 0.88rem; font-weight: 500; }
     /* Main Area */
     .main-area { display: flex; flex-direction: column; gap: 15px; }
     .toolbar {
@@ -98,7 +99,7 @@ HTML_CODE = """
       border-radius: 12px;
       position: relative;
       overflow: hidden;
-      min-height: 500px;
+      min-height: 480px;
     }
     #sketchSvg { width: 100%; height: 100%; display: block; }
     /* SVG Elements Styling */
@@ -121,12 +122,7 @@ HTML_CODE = """
     th, td { padding: 8px 12px; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
     th { background: #0f172a; color: var(--text-muted); }
     .zero { opacity: 0.3; }
-    /* Print Mode Hide */
-    @media print {
-      .sidebar, .toolbar, .btn-danger { display: none !important; }
-      .app-container { display: block; }
-      body { background: white; color: black; }
-    }
+    
     .btn-primary {
       background: var(--primary);
       color: #0f172a;
@@ -138,6 +134,7 @@ HTML_CODE = """
     }
     .btn-primary:hover { filter: brightness(1.1); }
     .toolbar-actions { display: flex; gap: 8px; }
+    
     /* Modal לטופס פרטי הדוח */
     .modal-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.6);
@@ -163,13 +160,16 @@ HTML_CODE = """
       background: #0f172a; border: 1px solid var(--border-color); color: var(--text-main);
       padding: 8px 16px; border-radius: 6px; cursor: pointer;
     }
+    .footer-credits {
+      text-align: center; margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);
+    }
   </style>
 </head>
 <body>
 <div class="app-container">
   <!-- סיידבר אלמנטים -->
   <div class="sidebar">
-    <h3>בנק אלמנטים</h3>
+    <h3>בנק אלמנטים ותשתיות</h3>
     <div id="paletteItems"></div>
   </div>
   <!-- אזור מרכזי -->
@@ -205,6 +205,11 @@ HTML_CODE = """
     </div>
   </div>
 </div>
+
+<div class="footer-credits">
+  כל הזכויות שמורות לנתנאל הררי | 054-5520445
+</div>
+
 <!-- Modal: פרטי הדוח -->
 <div class="modal-overlay hidden" id="reportModal">
   <div class="modal-box">
@@ -243,9 +248,11 @@ HTML_CODE = """
     </div>
   </div>
 </div>
+
 <script>
 const SVG_NS = "http://www.w3.org/2000/svg";
 const ELEMENT_TYPES = [
+  // רמזורים ותמרורים
   { id: "trafficLight", label: "רמזור תנועה", icon: () => `<rect x="-6" y="-16" width="12" height="30" rx="2" fill="#2b2b2b"/><circle cx="0" cy="-10" r="3.2" fill="#d8555a"/><circle cx="0" cy="-2" r="3.2" fill="#d99a2b"/><circle cx="0" cy="6" r="3.2" fill="#2f9e8f"/>` },
   { id: "pedLight", label: "רמזור הולכי רגל", icon: () => `<rect x="-6" y="-13" width="12" height="24" rx="2" fill="#2b2b2b"/><circle cx="0" cy="-6" r="3.4" fill="#d8555a"/><circle cx="0" cy="3" r="3.4" fill="#2f9e8f"/>` },
   { id: "crosswalk", label: "מעבר חציה", icon: () => `<g><rect x="-16" y="-8" width="32" height="16" fill="none"/>${[-12,-4,4,12].map(x=>`<rect x="${x-2.5}" y="-8" width="5" height="16" fill="#e9edf3"/>`).join("")}</g>` },
@@ -255,6 +262,13 @@ const ELEMENT_TYPES = [
   { id: "poleWood", label: "עמוד עץ", icon: () => `<circle cx="0" cy="0" r="9" fill="#a9784f" stroke="#6e4c2f" stroke-width="1.5"/>` },
   { id: "camera", label: "מצלמה", icon: () => `<rect x="-9" y="-6" width="18" height="12" rx="2" fill="#2b2b2b"/><circle cx="6" cy="0" r="4" fill="#111"/><circle cx="6" cy="0" r="1.6" fill="#4fb3ff"/>` },
   { id: "sign", label: "תמרור", icon: () => `<rect x="-1.8" y="-2" width="3.6" height="16" fill="#2b2b2b"/><polygon points="0,-18 10,-8 0,2 -10,-8" fill="#fff" stroke="#d8555a" stroke-width="2.2"/>` },
+  
+  // תשתיות כביש וגיאומטריה מורחבת
+  { id: "medianIsland", label: "אי תנועה (בטון)", icon: () => `<rect x="-15" y="-8" width="30" height="16" rx="8" fill="#64748b" stroke="#94a3b8" stroke-width="1.5"/>` },
+  { id: "laneExtension", label: "נתיב נוסף / הרחבה", icon: () => `<rect x="-18" y="-10" width="36" height="20" fill="#334155" stroke="#475569" stroke-dasharray="2 2"/>` },
+  { id: "stopLine", label: "קו עצירה לבן", icon: () => `<rect x="-16" y="-3" width="32" height="6" fill="#ffffff"/>` },
+  { id: "paintedIsland", label: "שטח הפרדה מבוצע", icon: () => `<g><polygon points="-14,-8 14,-8 10,8 -10,8" fill="none" stroke="#ffffff" stroke-width="1"/><line x1="-8" y1="-8" x2="-4" y2="8" stroke="#fff"/><line x1="0" y1="-8" x2="4" y2="8" stroke="#fff"/><line x1="8" y1="-8" x2="12" y2="8" stroke="#fff"/></g>` },
+
   // חצי סימון כביש
   { id: "arrowStraight", label: "חץ ישר", icon: () => `<path d="M-2,8 L-2,-4 L-6,-4 L0,-14 L6,-4 L2,-4 L2,8 Z" fill="#ffffff"/>` },
   { id: "arrowLeft", label: "חץ שמאלה", icon: () => `<path d="M3,8 L3,-1 L-3,-1 L-3,-5 L-9,0 L-3,5 L-3,2 L0,2 L0,8 Z" fill="#ffffff"/>` },
@@ -262,6 +276,7 @@ const ELEMENT_TYPES = [
   { id: "arrowStraightLeft", label: "חץ ישר + שמאל", icon: () => `<path d="M-2,8 L-2,0 L-5,0 L-5,-4 L-11,1 L-5,6 L-5,3 L-2,3 L-2,-4 L-6,-4 L0,-14 L6,-4 L2,-4 L2,8 Z" fill="#ffffff"/>` },
   { id: "arrowStraightRight", label: "חץ ישר + ימין", icon: () => `<path d="M-2,8 L-2,-4 L-6,-4 L0,-14 L6,-4 L2,-4 L2,3 L5,3 L5,6 L11,1 L5,-4 L5,0 L2,0 L2,8 Z" fill="#ffffff"/>` }
 ];
+
 const ACTIONS = ["add", "remove", "dismantle"];
 const ACTION_LABEL = { add: "הוספה", remove: "הסרה", dismantle: "פירוק" };
 const ACTION_COLOR = { add: "#2f9e8f", remove: "#d8555a", dismantle: "#d99a2b" };
@@ -436,7 +451,7 @@ function renderPlacedElement(elData) {
   delX.setAttribute("x", 16); delX.setAttribute("y", -19.5); delX.textContent = "×";
   g.appendChild(delCircle); g.appendChild(delX);
 
-  // כפתור סיבוב כיוון (מסתובב ב-90 מעלות)
+  // כפתור סיבוב
   const rotCircle = document.createElementNS(SVG_NS, "circle");
   rotCircle.setAttribute("class", "el-rotui");
   rotCircle.setAttribute("cx", -16); rotCircle.setAttribute("cy", -22); rotCircle.setAttribute("r", 7);
@@ -570,7 +585,7 @@ function generateReport() {
   const svgEl = document.getElementById("sketchSvg");
   const svgClone = svgEl.cloneNode(true);
   
-  // הסרת אלמנטים של ממשק העריכה (עיגולים, כפתורי סיבוב/מחיקה ותוויות) לקבלת סקיצה נקייה בדוח
+  // הסרת אלמנטים של עריכה מהדוח
   svgClone.querySelectorAll('.action-ringui, .el-labelui, .el-removeui, .el-rotui').forEach(el => el.remove());
 
   svgClone.setAttribute("xmlns", SVG_NS);
@@ -612,6 +627,7 @@ function generateReport() {
   .notes-box { background: #f8f9fa; padding: 12px; border-radius: 6px; border: 1px solid #ddd; white-space: pre-wrap; }
   .print-bar { text-align: center; margin-bottom: 20px; }
   .print-bar button { background: #38bdf8; border: none; padding: 10px 22px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; }
+  .credits { text-align: center; margin-top: 25px; font-size: 0.85rem; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
   @media print { .print-bar { display: none; } body { background: white; padding: 0; } .sheet { box-shadow: none; } }
 </style>
 </head>
@@ -637,6 +653,10 @@ function generateReport() {
     <p>כבל עילי: ${cableOverhead} מטר &nbsp;|&nbsp; כבל תת-קרקעי: ${cableUnderground} מטר</p>
     <h3>הערות מפקח</h3>
     <div class="notes-box">${notes}</div>
+
+    <div class="credits">
+      כל הזכויות שמורות לנתנאל הררי | 054-5520445
+    </div>
   </div>
 </body>
 </html>`;
@@ -653,9 +673,16 @@ function generateReport() {
 """
 
 # -----------------------------------------------------------------------------
-# Streamlit UI Layout
+# Streamlit UI Layout & Logic
 # -----------------------------------------------------------------------------
 st.title("🚦 מחולל סקיצות צומת ודוח כתב כמויות")
+
+def get_image_base64(file_obj):
+    if file_obj is not None:
+        bytes_data = file_obj.getvalue()
+        base64_str = base64.b64encode(bytes_data).decode()
+        return f"data:image/png;base64,{base64_str}"
+    return None
 
 with st.sidebar:
     st.header("📋 פרטי דוח הפיקוח")
@@ -667,6 +694,12 @@ with st.sidebar:
     cable_overhead = st.number_input("כבל עילי (מטרים)", min_value=0, value=0, step=5)
     cable_underground = st.number_input("כבל תת-קרקעי (מטרים)", min_value=0, value=0, step=5)
     
+    st.subheader("📸 תיעוד בתמונות")
+    img_before = st.file_uploader("צילום לפני הסדר", type=["png", "jpg", "jpeg"])
+    img_after = st.file_uploader("צילום אחרי הסדר", type=["png", "jpg", "jpeg"])
+    img_cabinet = st.file_uploader("ארון רמזורים / מנגנון", type=["png", "jpg", "jpeg"])
+    img_grounding = st.file_uploader("חיבורי הארקה", type=["png", "jpg", "jpeg"])
+    
     notes = st.text_area("הערות נוספות לדוח", placeholder="פירוט תקלות, דגשים לביצוע...")
 
 tab1, tab2 = st.tabs(["🎨 סקיצה אינטראקטיבית", "📄 תצוגת דוח מלא להדפסה"])
@@ -675,8 +708,36 @@ with tab1:
     components.html(HTML_CODE, height=920, scrolling=False)
 
 with tab2:
-    st.subheader("תצוגת דוח סופי")
+    st.subheader("תצוגת דוח סופי להדפסה")
     st.info("💡 להדפסה או שמירה כ-PDF, לחץ Ctrl+P במקלדת (או Cmd+P ב-Mac)")
+    
+    # הפיכת תמונות לקישור Base64 לתצוגה
+    b64_before = get_image_base64(img_before)
+    b64_after = get_image_base64(img_after)
+    b64_cabinet = get_image_base64(img_cabinet)
+    b64_grounding = get_image_base64(img_grounding)
+    
+    images_html = ""
+    photos_list = [
+        ("צילום לפני הסדר", b64_before),
+        ("צילום אחרי הסדר", b64_after),
+        ("ארון רמזורים / מנגנון", b64_cabinet),
+        ("חיבורי הארקה", b64_grounding)
+    ]
+    
+    has_photos = any(img[1] is not None for img in photos_list)
+    
+    if has_photos:
+        images_html += "<h4 style='margin-top:20px;'>📸 תיעוד מצולם מהשטח:</h4><div style='display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;'>"
+        for title, img_data in photos_list:
+            if img_data:
+                images_html += f"""
+                <div style="border: 1px solid #ccc; padding: 8px; border-radius: 6px; text-align: center; background: #fafafa;">
+                    <strong style="display:block; margin-bottom: 5px; font-size:0.9rem;">{title}</strong>
+                    <img src="{img_data}" style="max-width: 100%; max-height: 220px; border-radius: 4px; object-fit: contain;">
+                </div>
+                """
+        images_html += "</div>"
     
     report_html = f"""
     <div style="background: white; color: black; padding: 25px; border-radius: 8px; font-family: sans-serif; direction: rtl;">
@@ -698,10 +759,16 @@ with tab2:
             <li><strong>כבל תת-קרקעי:</strong> {cable_underground} מטר</li>
         </ul>
         
+        {images_html}
+        
         <hr style="margin: 15px 0;">
         
         <h4>הערות מפקח:</h4>
         <p style="background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #ddd;">{notes or 'אין הערות נוספות.'}</p>
+        
+        <div style="text-align: center; margin-top: 30px; font-size: 0.85rem; color: #666; border-top: 1px solid #eee; padding-top: 10px;">
+            כל הזכויות שמורות לנתנאל הררי | 054-5520445
+        </div>
     </div>
     """
     st.markdown(textwrap.dedent(report_html), unsafe_allow_html=True)
