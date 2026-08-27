@@ -1,12 +1,10 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import textwrap
-import base64
 
 st.set_page_config(
     page_title="מחולל סקיצות צומת וכתב כמויות - נתנאל הררי",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # -----------------------------------------------------------------------------
@@ -143,7 +141,7 @@ HTML_CODE = """
     .modal-overlay.hidden { display: none; }
     .modal-box {
       background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px;
-      padding: 20px; width: 420px; max-width: 90%; display: flex; flex-direction: column; gap: 10px;
+      padding: 20px; width: 480px; max-width: 95%; display: flex; flex-direction: column; gap: 10px;
       max-height: 85vh; overflow-y: auto;
     }
     .modal-box h3 { color: var(--primary); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
@@ -167,12 +165,10 @@ HTML_CODE = """
 </head>
 <body>
 <div class="app-container">
-  <!-- סיידבר אלמנטים -->
   <div class="sidebar">
     <h3>בנק אלמנטים ותשתיות</h3>
     <div id="paletteItems"></div>
   </div>
-  <!-- אזור מרכזי -->
   <div class="main-area">
     <div class="toolbar">
       <div class="junction-toggle" id="junctionToggle">
@@ -188,7 +184,6 @@ HTML_CODE = """
     <div class="canvas-container">
       <svg id="sketchSvg" viewBox="0 0 800 600"></svg>
     </div>
-    <!-- טבלת כמויות בתוך הממשק -->
     <div class="boq-panel">
       <h3>כתב כמויות אוטומטי (מתוך הסקיצה)</h3>
       <table id="boqTable">
@@ -208,7 +203,8 @@ HTML_CODE = """
 <div class="footer-credits">
   כל הזכויות שמורות לנתנאל הררי | 054-5520445
 </div>
-<!-- Modal: פרטי הדוח -->
+
+<!-- Modal: פרטי הדוח ותמונות -->
 <div class="modal-overlay hidden" id="reportModal">
   <div class="modal-box">
     <h3>פרטי דוח הפיקוח</h3>
@@ -236,6 +232,26 @@ HTML_CODE = """
         <input type="number" id="rptCableUnderground" min="0" step="5" value="0">
       </div>
     </div>
+
+    <!-- העלאת תמונות ישירות בחלון הדוח -->
+    <h4 style="color: var(--primary); margin-top: 5px;">📸 העלאת תמונות לדוח</h4>
+    <div class="modal-field">
+      <label>צילום לפני הסדר</label>
+      <input type="file" id="imgBefore" multiple accept="image/*">
+    </div>
+    <div class="modal-field">
+      <label>צילום אחרי הסדר</label>
+      <input type="file" id="imgAfter" multiple accept="image/*">
+    </div>
+    <div class="modal-field">
+      <label>ארון רמזורים / מנגנון</label>
+      <input type="file" id="imgCabinet" multiple accept="image/*">
+    </div>
+    <div class="modal-field">
+      <label>חיבורי הארקה</label>
+      <input type="file" id="imgGrounding" multiple accept="image/*">
+    </div>
+
     <div class="modal-field">
       <label>הערות נוספות</label>
       <textarea id="rptNotes" rows="3" placeholder="פירוט תקלות, דגשים לביצוע..."></textarea>
@@ -246,10 +262,10 @@ HTML_CODE = """
     </div>
   </div>
 </div>
+
 <script>
 const SVG_NS = "http://www.w3.org/2000/svg";
 const ELEMENT_TYPES = [
-  // רמזורים ותמרורים
   { id: "trafficLight", label: "רמזור תנועה", icon: () => `<rect x="-6" y="-16" width="12" height="30" rx="2" fill="#2b2b2b"/><circle cx="0" cy="-10" r="3.2" fill="#d8555a"/><circle cx="0" cy="-2" r="3.2" fill="#d99a2b"/><circle cx="0" cy="6" r="3.2" fill="#2f9e8f"/>` },
   { id: "pedLight", label: "רמזור הולכי רגל", icon: () => `<rect x="-6" y="-13" width="12" height="24" rx="2" fill="#2b2b2b"/><circle cx="0" cy="-6" r="3.4" fill="#d8555a"/><circle cx="0" cy="3" r="3.4" fill="#2f9e8f"/>` },
   { id: "crosswalk", label: "מעבר חציה", icon: () => `<g><rect x="-16" y="-8" width="32" height="16" fill="none"/>${[-12,-4,4,12].map(x=>`<rect x="${x-2.5}" y="-8" width="5" height="16" fill="#e9edf3"/>`).join("")}</g>` },
@@ -259,13 +275,10 @@ const ELEMENT_TYPES = [
   { id: "poleWood", label: "עמוד עץ", icon: () => `<circle cx="0" cy="0" r="9" fill="#a9784f" stroke="#6e4c2f" stroke-width="1.5"/>` },
   { id: "camera", label: "מצלמה", icon: () => `<rect x="-9" y="-6" width="18" height="12" rx="2" fill="#2b2b2b"/><circle cx="6" cy="0" r="4" fill="#111"/><circle cx="6" cy="0" r="1.6" fill="#4fb3ff"/>` },
   { id: "sign", label: "תמרור", icon: () => `<rect x="-1.8" y="-2" width="3.6" height="16" fill="#2b2b2b"/><polygon points="0,-18 10,-8 0,2 -10,-8" fill="#fff" stroke="#d8555a" stroke-width="2.2"/>` },
-  
-  // תשתיות כביש וגיאומטריה מורחבת
   { id: "medianIsland", label: "אי תנועה (בטון)", icon: () => `<rect x="-15" y="-8" width="30" height="16" rx="8" fill="#64748b" stroke="#94a3b8" stroke-width="1.5"/>` },
   { id: "laneExtension", label: "נתיב נוסף / הרחבה", icon: () => `<rect x="-18" y="-10" width="36" height="20" fill="#334155" stroke="#475569" stroke-dasharray="2 2"/>` },
   { id: "stopLine", label: "קו עצירה לבן", icon: () => `<rect x="-16" y="-3" width="32" height="6" fill="#ffffff"/>` },
   { id: "paintedIsland", label: "שטח הפרדה מבוצע", icon: () => `<g><polygon points="-14,-8 14,-8 10,8 -10,8" fill="none" stroke="#ffffff" stroke-width="1"/><line x1="-8" y1="-8" x2="-4" y2="8" stroke="#fff"/><line x1="0" y1="-8" x2="4" y2="8" stroke="#fff"/><line x1="8" y1="-8" x2="12" y2="8" stroke="#fff"/></g>` },
-  // חצי סימון כביש
   { id: "arrowStraight", label: "חץ ישר", icon: () => `<path d="M-2,8 L-2,-4 L-6,-4 L0,-14 L6,-4 L2,-4 L2,8 Z" fill="#ffffff"/>` },
   { id: "arrowLeft", label: "חץ שמאלה", icon: () => `<path d="M3,8 L3,-1 L-3,-1 L-3,-5 L-9,0 L-3,5 L-3,2 L0,2 L0,8 Z" fill="#ffffff"/>` },
   { id: "arrowRight", label: "חץ ימינה", icon: () => `<path d="M-3,8 L-3,-1 L3,-1 L3,-5 L9,0 L3,5 L3,2 L0,2 L0,8 Z" fill="#ffffff"/>` },
@@ -276,6 +289,7 @@ const ACTIONS = ["add", "remove", "dismantle"];
 const ACTION_LABEL = { add: "הוספה", remove: "הסרה", dismantle: "פירוק" };
 const ACTION_COLOR = { add: "#2f9e8f", remove: "#d8555a", dismantle: "#d99a2b" };
 const state = { shape: "X", elements: [], nextId: 1 };
+
 document.addEventListener("DOMContentLoaded", () => {
   renderPalette();
   renderJunctionBase();
@@ -285,6 +299,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindReportModal();
   renderBoqTable();
 });
+
 function renderPalette() {
   const wrap = document.getElementById("paletteItems");
   wrap.innerHTML = "";
@@ -301,6 +316,7 @@ function renderPalette() {
     wrap.appendChild(item);
   });
 }
+
 function bindJunctionToggle() {
   const toggle = document.getElementById("junctionToggle");
   toggle.querySelectorAll(".junction-toggle__btn").forEach(btn => {
@@ -312,6 +328,7 @@ function bindJunctionToggle() {
     });
   });
 }
+
 function renderJunctionBase() {
   const svg = document.getElementById("sketchSvg");
   let base = svg.querySelector("#baseLayer");
@@ -344,6 +361,7 @@ function renderJunctionBase() {
     drawZebraCrossing(base, cx - ROAD_W/2 - 25, cy, ROAD_W, false);
   }
 }
+
 function drawZebraCrossing(base, x, y, roadWidth, vertical) {
   const g = document.createElementNS(SVG_NS, "g");
   g.setAttribute("class", "crosswalk-base");
@@ -360,18 +378,21 @@ function drawZebraCrossing(base, x, y, roadWidth, vertical) {
   }
   base.appendChild(g);
 }
+
 function line(x1,y1,x2,y2,cls){
   const el = document.createElementNS(SVG_NS,"line");
   el.setAttribute("x1",x1); el.setAttribute("y1",y1);
   el.setAttribute("x2",x2); el.setAttribute("y2",y2);
   el.setAttribute("class",cls); return el;
 }
+
 function rect(x,y,w,h,cls){
   const el = document.createElementNS(SVG_NS,"rect");
   el.setAttribute("x",x); el.setAttribute("y",y);
   el.setAttribute("width",w); el.setAttribute("height",h);
   el.setAttribute("class",cls); return el;
 }
+
 function bindCanvasDropTarget() {
   const svg = document.getElementById("sketchSvg");
   svg.addEventListener("dragover", e => e.preventDefault());
@@ -384,12 +405,14 @@ function bindCanvasDropTarget() {
     addElement(type.id, pt.x, pt.y);
   });
 }
+
 function clientToSvgPoint(svg, clientX, clientY) {
   const p = svg.createSVGPoint();
   p.x = clientX; p.y = clientY;
   const ctm = svg.getScreenCTM().inverse();
   return p.matrixTransform(ctm);
 }
+
 function addElement(typeId, x, y) {
   const el = { id: state.nextId++, type: typeId, x, y, action: "add", rotation: 0 };
   state.elements.push(el);
@@ -397,6 +420,7 @@ function addElement(typeId, x, y) {
   renderBoqTable();
   updateCanvasCount();
 }
+
 function renderPlacedElement(elData) {
   const svg = document.getElementById("sketchSvg");
   const type = ELEMENT_TYPES.find(t => t.id === elData.type);
@@ -417,7 +441,7 @@ function renderPlacedElement(elData) {
   label.setAttribute("class", "el-label el-labelui"); label.setAttribute("y", 32);
   label.textContent = labelText(type, elData);
   g.appendChild(label);
-  // כפתור מחיקה
+  
   const delCircle = document.createElementNS(SVG_NS, "circle");
   delCircle.setAttribute("class", "el-remove el-removeui");
   delCircle.setAttribute("cx", 16); delCircle.setAttribute("cy", -22); delCircle.setAttribute("r", 7);
@@ -425,7 +449,7 @@ function renderPlacedElement(elData) {
   delX.setAttribute("class", "el-remove-x el-removeui");
   delX.setAttribute("x", 16); delX.setAttribute("y", -19.5); delX.textContent = "×";
   g.appendChild(delCircle); g.appendChild(delX);
-  // כפתור סיבוב
+  
   const rotCircle = document.createElementNS(SVG_NS, "circle");
   rotCircle.setAttribute("class", "el-rotui");
   rotCircle.setAttribute("cx", -16); rotCircle.setAttribute("cy", -22); rotCircle.setAttribute("r", 7);
@@ -438,9 +462,11 @@ function renderPlacedElement(elData) {
   rotText.style.pointerEvents = "none";
   rotText.textContent = "↺";
   g.appendChild(rotCircle); g.appendChild(rotText);
+  
   rotCircle.addEventListener("click", (e) => { e.stopPropagation(); rotateElement(elData.id); });
   delCircle.addEventListener("click", (e) => { e.stopPropagation(); removeElement(elData.id); });
   iconGroup.addEventListener("click", (e) => { e.stopPropagation(); cycleAction(elData.id); });
+  
   let dragging = false;
   g.addEventListener("pointerdown", (e) => {
     if (e.target === delCircle || e.target === delX || e.target === rotCircle) return;
@@ -455,6 +481,7 @@ function renderPlacedElement(elData) {
   g.addEventListener("pointerup", () => { dragging = false; });
   svg.appendChild(g);
 }
+
 function cycleAction(id) {
   const el = state.elements.find(e => e.id === id);
   if (!el) return;
@@ -463,15 +490,18 @@ function cycleAction(id) {
   redrawElement(el);
   renderBoqTable();
 }
+
 function rotateElement(id) {
   const el = state.elements.find(e => e.id === id);
   if (!el) return;
   el.rotation = ((el.rotation || 0) + 90) % 360;
   redrawElement(el);
 }
+
 function labelText(type, elData) {
   return `${type.label} · ${ACTION_LABEL[elData.action]}`;
 }
+
 function removeElement(id) {
   state.elements = state.elements.filter(e => e.id !== id);
   const svg = document.getElementById("sketchSvg");
@@ -480,15 +510,18 @@ function removeElement(id) {
   renderBoqTable();
   updateCanvasCount();
 }
+
 function redrawElement(elData) {
   const svg = document.getElementById("sketchSvg");
   const g = svg.querySelector(`.placed-el[data-id="${elData.id}"]`);
   if (g) g.remove();
   renderPlacedElement(elData);
 }
+
 function updateCanvasCount() {
   document.getElementById("canvasCount").textContent = `${state.elements.length} אלמנטים בסקיצה`;
 }
+
 function bindClearButton() {
   document.getElementById("clearCanvas").addEventListener("click", () => {
     if (state.elements.length && !confirm("לנקות את כל האלמנטים מהסקיצה?")) return;
@@ -498,6 +531,7 @@ function bindClearButton() {
     updateCanvasCount();
   });
 }
+
 function computeBoq() {
   return ELEMENT_TYPES.map(type => {
     const counts = { add: 0, remove: 0, dismantle: 0 };
@@ -505,6 +539,7 @@ function computeBoq() {
     return { label: type.label, ...counts };
   });
 }
+
 function renderBoqTable() {
   const tbody = document.querySelector("#boqTable tbody");
   tbody.innerHTML = "";
@@ -521,6 +556,7 @@ function renderBoqTable() {
     tbody.appendChild(tr);
   });
 }
+
 function bindReportModal() {
   const modal = document.getElementById("reportModal");
   document.getElementById("openReportBtn").addEventListener("click", () => {
@@ -530,22 +566,63 @@ function bindReportModal() {
     modal.classList.remove("hidden");
   });
   document.getElementById("closeReportBtn").addEventListener("click", () => modal.classList.add("hidden"));
-  document.getElementById("generateReportBtn").addEventListener("click", () => {
-    generateReport();
+  document.getElementById("generateReportBtn").addEventListener("click", async () => {
+    await generateReport();
     modal.classList.add("hidden");
   });
 }
-function generateReport() {
+
+// המרת קבצי תמונות שנבחרו במודאל למחרוזות Base64
+async function readFilesAsBase64(inputEl) {
+  const files = Array.from(inputEl.files || []);
+  const promises = files.map(file => new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.readAsDataURL(file);
+  }));
+  return Promise.all(promises);
+}
+
+async function generateReport() {
   const site = document.getElementById("rptSite").value || "—";
   const inspector = document.getElementById("rptInspector").value || "—";
   const date = document.getElementById("rptDate").value || "—";
   const cableOverhead = document.getElementById("rptCableOverhead").value || "0";
   const cableUnderground = document.getElementById("rptCableUnderground").value || "0";
   const notes = document.getElementById("rptNotes").value || "אין הערות נוספות.";
+
+  // טעינת התמונות מהטופס במודאל
+  const imgsBefore = await readFilesAsBase64(document.getElementById("imgBefore"));
+  const imgsAfter = await readFilesAsBase64(document.getElementById("imgAfter"));
+  const imgsCabinet = await readFilesAsBase64(document.getElementById("imgCabinet"));
+  const imgsGrounding = await readFilesAsBase64(document.getElementById("imgGrounding"));
+
+  const photoCategories = [
+    { title: "צילום לפני הסדר", imgs: imgsBefore },
+    { title: "צילום אחרי הסדר", imgs: imgsAfter },
+    { title: "ארון רמזורים / מנגנון", imgs: imgsCabinet },
+    { title: "חיבורי הארקה", imgs: imgsGrounding }
+  ];
+
+  let photosHtml = "";
+  const hasPhotos = photoCategories.some(c => c.imgs.length > 0);
+  if (hasPhotos) {
+    photosHtml += `<h3>📸 תיעוד מצולם מהשטח</h3><div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px;">`;
+    photoCategories.forEach(cat => {
+      cat.imgs.forEach((imgSrc, idx) => {
+        const labelSuffix = cat.imgs.length > 1 ? ` (${idx + 1})` : "";
+        photosHtml += `
+          <div style="border: 1px solid #cbd5e1; padding: 6px; border-radius: 6px; text-align: center; background: #fafafa;">
+            <strong style="display:block; margin-bottom: 4px; font-size: 0.85rem; color: #334155;">${cat.title}${labelSuffix}</strong>
+            <img src="${imgSrc}" style="max-width: 100%; max-height: 160px; object-fit: contain; border-radius: 4px;">
+          </div>`;
+      });
+    });
+    photosHtml += `</div>`;
+  }
+
   const svgEl = document.getElementById("sketchSvg");
   const svgClone = svgEl.cloneNode(true);
-  
-  // הסרת אלמנטים של עריכה מהדוח
   svgClone.querySelectorAll('.action-ringui, .el-labelui, .el-removeui, .el-rotui').forEach(el => el.remove());
   svgClone.setAttribute("xmlns", SVG_NS);
   svgClone.style.background = "#0f172a";
@@ -553,6 +630,7 @@ function generateReport() {
   svgClone.style.maxWidth = "760px";
   svgClone.style.height = "auto";
   const svgMarkup = new XMLSerializer().serializeToString(svgClone);
+
   const boqRows = computeBoq().map(row => {
     const total = row.add + row.remove + row.dismantle;
     if (total === 0) return "";
@@ -563,6 +641,7 @@ function generateReport() {
       <td>${row.dismantle || "-"}</td>
     </tr>`;
   }).join("");
+
   const reportHtml = `
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
@@ -578,10 +657,10 @@ function generateReport() {
   .meta-table td { padding: 6px 4px; font-size: 0.95rem; }
   .sketch-box { background: #0f172a; border-radius: 10px; padding: 10px; text-align: center; margin-bottom: 20px; }
   h3 { margin: 18px 0 8px; color: #0f172a; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px; }
-  table.boq { width: 100%; border-collapse: collapse; }
+  table.boq { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
   table.boq th, table.boq td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: center; font-size: 0.9rem; }
   table.boq th { background: #0f172a; color: white; }
-  .notes-box { background: #f8f9fa; padding: 12px; border-radius: 6px; border: 1px solid #ddd; white-space: pre-wrap; }
+  .notes-box { background: #f8f9fa; padding: 12px; border-radius: 6px; border: 1px solid #ddd; white-space: pre-wrap; margin-bottom: 20px; }
   .print-bar { text-align: center; margin-bottom: 20px; }
   .print-bar button { background: #38bdf8; border: none; padding: 10px 22px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; }
   .credits { text-align: center; margin-top: 25px; font-size: 0.85rem; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
@@ -607,7 +686,8 @@ function generateReport() {
       <tbody>${boqRows || '<tr><td colspan="4">לא הוצבו אלמנטים בסקיצה</td></tr>'}</tbody>
     </table>
     <h3>תשתיות כבלים</h3>
-    <p>כבל עילי: ${cableOverhead} מטר &nbsp;|&nbsp; כבל תת-קרקעי: ${cableUnderground} מטר</p>
+    <p style="margin-bottom: 15px;">כבל עילי: ${cableOverhead} מטר &nbsp;|&nbsp; כבל תת-קרקעי: ${cableUnderground} מטר</p>
+    ${photosHtml}
     <h3>הערות מפקח</h3>
     <div class="notes-box">${notes}</div>
     <div class="credits">
@@ -616,6 +696,7 @@ function generateReport() {
   </div>
 </body>
 </html>`;
+
   const win = window.open("", "_blank");
   if (!win) { alert("הדפדפן חסם את פתיחת החלון החדש. יש לאשר חלונות קופצים עבור עמוד זה."); return; }
   win.document.open();
@@ -627,111 +708,4 @@ function generateReport() {
 </html>
 """
 
-# -----------------------------------------------------------------------------
-# Streamlit UI Layout & Logic
-# -----------------------------------------------------------------------------
-st.title("🚦 מחולל סקיצות צומת ודוח כתב כמויות")
-
-def get_images_base64(files_list):
-    """פונקציה המקבלת רשימת קבצים ומחזירה רשימת מחרוזות Base64"""
-    b64_list = []
-    if files_list:
-        for file_obj in files_list:
-            bytes_data = file_obj.getvalue()
-            base64_str = base64.b64encode(bytes_data).decode()
-            b64_list.append(f"data:image/png;base64,{base64_str}")
-    return b64_list
-
-with st.sidebar:
-    st.header("📋 פרטי דוח הפיקוח")
-    site_name = st.text_input("שם האתר / צומת", placeholder="לדוגמה: צומת אלנבי / רוטשילד")
-    inspector_name = st.text_input("שם המפקח", placeholder="שם מלא")
-    site_date = st.date_input("תאריך בדיקה")
-    
-    st.subheader("🔌 תשתיות כבלים")
-    cable_overhead = st.number_input("כבל עילי (מטרים)", min_value=0, value=0, step=5)
-    cable_underground = st.number_input("כבל תת-קרקעי (מטרים)", min_value=0, value=0, step=5)
-    
-    st.subheader("📸 תיעוד בתמונות")
-    # העלאה מרובת תמונות בעזרת accept_multiple_files=True
-    imgs_before = st.file_uploader("צילום לפני הסדר", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
-    imgs_after = st.file_uploader("צילום אחרי הסדר", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
-    imgs_cabinet = st.file_uploader("ארון רמזורים / מנגנון", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
-    imgs_grounding = st.file_uploader("חיבורי הארקה", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
-    
-    notes = st.text_area("הערות נוספות לדוח", placeholder="פירוט תקלות, דגשים לביצוע...")
-
-tab1, tab2 = st.tabs(["🎨 סקיצה אינטראקטיבית", "📄 תצוגת דוח מלא להדפסה"])
-
-with tab1:
-    components.html(HTML_CODE, height=920, scrolling=False)
-
-with tab2:
-    st.subheader("תצוגת דוח סופי להדפסה")
-    st.info("💡 להדפסה או שמירה כ-PDF, לחץ Ctrl+P במקלדת (או Cmd+P ב-Mac)")
-    
-    # הפיכת רשימות התמונות לקישורי Base64
-    b64_before = get_images_base64(imgs_before)
-    b64_after = get_images_base64(imgs_after)
-    b64_cabinet = get_images_base64(imgs_cabinet)
-    b64_grounding = get_images_base64(imgs_grounding)
-    
-    photos_categories = [
-        ("צילום לפני הסדר", b64_before),
-        ("צילום אחרי הסדר", b64_after),
-        ("ארון רמזורים / מנגנון", b64_cabinet),
-        ("חיבורי הארקה", b64_grounding)
-    ]
-    
-    # בדיקה האם הועלו תמונות בכלל
-    has_photos = any(len(b64_list) > 0 for _, b64_list in photos_categories)
-    
-    images_html = ""
-    if has_photos:
-        images_html += "<h4 style='margin-top:20px;'>📸 תיעוד מצולם מהשטח:</h4>"
-        images_html += "<div style='display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 10px;'>"
-        
-        for cat_title, b64_list in photos_categories:
-            for idx, img_data in enumerate(b64_list):
-                label_suffix = f" ({idx + 1})" if len(b64_list) > 1 else ""
-                images_html += f"""
-                <div style="border: 1px solid #ccc; padding: 8px; border-radius: 6px; text-align: center; background: #fafafa;">
-                    <strong style="display:block; margin-bottom: 5px; font-size:0.85rem;">{cat_title}{label_suffix}</strong>
-                    <img src="{img_data}" style="max-width: 100%; max-height: 180px; border-radius: 4px; object-fit: contain;">
-                </div>
-                """
-        images_html += "</div>"
-    
-    report_html = f"""
-    <div style="background: white; color: black; padding: 25px; border-radius: 8px; font-family: sans-serif; direction: rtl;">
-        <h2 style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px;">דוח פיקוח ותשתיות צומת</h2>
-        
-        <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse; border: none;">
-            <tr style="border: none;">
-                <td style="border: none;"><strong>אתר:</strong> {site_name or '—'}</td>
-                <td style="border: none;"><strong>תאריך:</strong> {site_date}</td>
-                <td style="border: none;"><strong>מפקח:</strong> {inspector_name or '—'}</td>
-            </tr>
-        </table>
-        
-        <hr style="margin: 15px 0;">
-        
-        <h4>תשתיות כבלים:</h4>
-        <ul>
-            <li><strong>כבל עילי:</strong> {cable_overhead} מטר</li>
-            <li><strong>כבל תת-קרקעי:</strong> {cable_underground} מטר</li>
-        </ul>
-        
-        {images_html}
-        
-        <hr style="margin: 15px 0;">
-        
-        <h4>הערות מפקח:</h4>
-        <p style="background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #ddd;">{notes or 'אין הערות נוספות.'}</p>
-        
-        <div style="text-align: center; margin-top: 30px; font-size: 0.85rem; color: #666; border-top: 1px solid #eee; padding-top: 10px;">
-            כל הזכויות שמורות לנתנאל הררי | 054-5520445
-        </div>
-    </div>
-    """
-    st.markdown(textwrap.dedent(report_html), unsafe_allow_html=True)
+components.html(HTML_CODE, height=980, scrolling=False)
