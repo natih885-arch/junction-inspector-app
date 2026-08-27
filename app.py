@@ -28,12 +28,9 @@ HTML_CODE = """
       --remove-color: #d8555a;
       --dismantle-color: #d99a2b;
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
     body { background-color: var(--bg-color); color: var(--text-main); padding: 15px; }
-
     .app-container { display: grid; grid-template-columns: 280px 1fr; gap: 20px; height: calc(100vh - 30px); }
-
     /* Palette Sidebar */
     .sidebar {
       background: var(--card-bg);
@@ -61,10 +58,8 @@ HTML_CODE = """
     .palette-item:hover { border-color: var(--primary); background: #1e293b; }
     .palette-item svg { width: 32px; height: 32px; flex-shrink: 0; }
     .palette-item span { font-size: 0.95rem; font-weight: 500; }
-
     /* Main Area */
     .main-area { display: flex; flex-direction: column; gap: 15px; }
-
     .toolbar {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
@@ -74,7 +69,6 @@ HTML_CODE = """
       justify-content: space-between;
       align-items: center;
     }
-
     .junction-toggle { display: flex; gap: 8px; }
     .junction-toggle__btn {
       background: #0f172a;
@@ -86,7 +80,6 @@ HTML_CODE = """
       font-weight: bold;
     }
     .junction-toggle__btn.is-active { background: var(--primary); color: #0f172a; border-color: var(--primary); }
-
     .btn-danger {
       background: #991b1b;
       color: white;
@@ -97,7 +90,6 @@ HTML_CODE = """
       font-weight: bold;
     }
     .btn-danger:hover { background: #dc2626; }
-
     /* Canvas */
     .canvas-container {
       flex: 1;
@@ -109,7 +101,6 @@ HTML_CODE = """
       min-height: 500px;
     }
     #sketchSvg { width: 100%; height: 100%; display: block; }
-
     /* SVG Elements Styling */
     .grid-line { stroke: #1e293b; stroke-width: 1; }
     .road { fill: #1e293b; stroke: #334155; stroke-width: 2; }
@@ -118,7 +109,6 @@ HTML_CODE = """
     .el-label { fill: #f8fafc; font-size: 11px; text-anchor: middle; font-weight: 500; pointer-events: none; }
     .el-remove { fill: #ef4444; cursor: pointer; }
     .el-remove-x { fill: white; font-size: 10px; font-weight: bold; text-anchor: middle; cursor: pointer; pointer-events: none; }
-
     /* BOQ Panel */
     .boq-panel {
       background: var(--card-bg);
@@ -131,14 +121,12 @@ HTML_CODE = """
     th, td { padding: 8px 12px; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
     th { background: #0f172a; color: var(--text-muted); }
     .zero { opacity: 0.3; }
-
     /* Print Mode Hide */
     @media print {
       .sidebar, .toolbar, .btn-danger { display: none !important; }
       .app-container { display: block; }
       body { background: white; color: black; }
     }
-
     .btn-primary {
       background: var(--primary);
       color: #0f172a;
@@ -150,7 +138,6 @@ HTML_CODE = """
     }
     .btn-primary:hover { filter: brightness(1.1); }
     .toolbar-actions { display: flex; gap: 8px; }
-
     /* Modal לטופס פרטי הדוח */
     .modal-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.6);
@@ -179,14 +166,12 @@ HTML_CODE = """
   </style>
 </head>
 <body>
-
 <div class="app-container">
   <!-- סיידבר אלמנטים -->
   <div class="sidebar">
     <h3>בנק אלמנטים</h3>
     <div id="paletteItems"></div>
   </div>
-
   <!-- אזור מרכזי -->
   <div class="main-area">
     <div class="toolbar">
@@ -200,11 +185,9 @@ HTML_CODE = """
         <button class="btn-danger" id="clearCanvas">ניקוי סקיצה</button>
       </div>
     </div>
-
     <div class="canvas-container">
       <svg id="sketchSvg" viewBox="0 0 800 600"></svg>
     </div>
-
     <!-- טבלת כמויות בתוך הממשק -->
     <div class="boq-panel">
       <h3>כתב כמויות אוטומטי (מתוך הסקיצה)</h3>
@@ -222,7 +205,6 @@ HTML_CODE = """
     </div>
   </div>
 </div>
-
 <!-- Modal: פרטי הדוח -->
 <div class="modal-overlay hidden" id="reportModal">
   <div class="modal-box">
@@ -261,10 +243,8 @@ HTML_CODE = """
     </div>
   </div>
 </div>
-
 <script>
 const SVG_NS = "http://www.w3.org/2000/svg";
-
 const ELEMENT_TYPES = [
   { id: "trafficLight", label: "רמזור תנועה", icon: () => `<rect x="-6" y="-16" width="12" height="30" rx="2" fill="#2b2b2b"/><circle cx="0" cy="-10" r="3.2" fill="#d8555a"/><circle cx="0" cy="-2" r="3.2" fill="#d99a2b"/><circle cx="0" cy="6" r="3.2" fill="#2f9e8f"/>` },
   { id: "pedLight", label: "רמזור הולכי רגל", icon: () => `<rect x="-6" y="-13" width="12" height="24" rx="2" fill="#2b2b2b"/><circle cx="0" cy="-6" r="3.4" fill="#d8555a"/><circle cx="0" cy="3" r="3.4" fill="#2f9e8f"/>` },
@@ -274,37 +254,17 @@ const ELEMENT_TYPES = [
   { id: "poleConcrete", label: "עמוד בטון", icon: () => `<circle cx="0" cy="0" r="9" fill="#9aa3ad" stroke="#5c636b" stroke-width="1.5"/>` },
   { id: "poleWood", label: "עמוד עץ", icon: () => `<circle cx="0" cy="0" r="9" fill="#a9784f" stroke="#6e4c2f" stroke-width="1.5"/>` },
   { id: "camera", label: "מצלמה", icon: () => `<rect x="-9" y="-6" width="18" height="12" rx="2" fill="#2b2b2b"/><circle cx="6" cy="0" r="4" fill="#111"/><circle cx="6" cy="0" r="1.6" fill="#4fb3ff"/>` },
-  { id: "sign", label: "תמרור", icon: () => `<rect x="-1.8" y="-2" width="3.6" height="16" fill="#2b2b2b"/><polygon points="0,-18 10,-8 0,2 -10,-8" fill="#fff" stroke="#d8555a" stroke-width="2.2"/>` }
+  { id: "sign", label: "תמרור", icon: () => `<rect x="-1.8" y="-2" width="3.6" height="16" fill="#2b2b2b"/><polygon points="0,-18 10,-8 0,2 -10,-8" fill="#fff" stroke="#d8555a" stroke-width="2.2"/>` },
+  // חצי סימון כביש
+  { id: "arrowStraight", label: "חץ ישר", icon: () => `<path d="M-2,8 L-2,-4 L-6,-4 L0,-14 L6,-4 L2,-4 L2,8 Z" fill="#ffffff"/>` },
+  { id: "arrowLeft", label: "חץ שמאלה", icon: () => `<path d="M3,8 L3,-1 L-3,-1 L-3,-5 L-9,0 L-3,5 L-3,2 L0,2 L0,8 Z" fill="#ffffff"/>` },
+  { id: "arrowRight", label: "חץ ימינה", icon: () => `<path d="M-3,8 L-3,-1 L3,-1 L3,-5 L9,0 L3,5 L3,2 L0,2 L0,8 Z" fill="#ffffff"/>` },
+  { id: "arrowStraightLeft", label: "חץ ישר + שמאל", icon: () => `<path d="M-2,8 L-2,0 L-5,0 L-5,-4 L-11,1 L-5,6 L-5,3 L-2,3 L-2,-4 L-6,-4 L0,-14 L6,-4 L2,-4 L2,8 Z" fill="#ffffff"/>` },
+  { id: "arrowStraightRight", label: "חץ ישר + ימין", icon: () => `<path d="M-2,8 L-2,-4 L-6,-4 L0,-14 L6,-4 L2,-4 L2,3 L5,3 L5,6 L11,1 L5,-4 L5,0 L2,0 L2,8 Z" fill="#ffffff"/>` }
 ];
-
 const ACTIONS = ["add", "remove", "dismantle"];
 const ACTION_LABEL = { add: "הוספה", remove: "הסרה", dismantle: "פירוק" };
 const ACTION_COLOR = { add: "#2f9e8f", remove: "#d8555a", dismantle: "#d99a2b" };
-
-// אלמנטים שמקבלים חץ הכוונה (פנסים בלבד)
-const HAS_DIRECTION = ["trafficLight", "railLight", "blinker"];
-const DIRECTIONS = ["none", "straight", "left", "right", "straight-left", "straight-right", "left-right", "all"];
-const DIRECTION_LABEL = {
-  "none": "ללא הכוונה",
-  "straight": "ישר",
-  "left": "שמאלה",
-  "right": "ימינה",
-  "straight-left": "ישר + שמאל",
-  "straight-right": "ישר + ימין",
-  "left-right": "שמאל + ימין",
-  "all": "כל הכיוונים"
-};
-// זווית (במעלות, 0=למעלה/ישר) לכל חץ שצריך להצטייר עבור כל כיוון
-const DIRECTION_ARROWS = {
-  "none": [],
-  "straight": [0],
-  "left": [-45],
-  "right": [45],
-  "straight-left": [-45, 0],
-  "straight-right": [0, 45],
-  "left-right": [-45, 45],
-  "all": [-45, 0, 45]
-};
 
 const state = { shape: "X", elements: [], nextId: 1 };
 
@@ -351,7 +311,6 @@ function renderJunctionBase() {
   const svg = document.getElementById("sketchSvg");
   let base = svg.querySelector("#baseLayer");
   if (base) base.remove();
-
   base = document.createElementNS(SVG_NS, "g");
   base.setAttribute("id", "baseLayer");
   svg.insertBefore(base, svg.firstChild);
@@ -360,7 +319,6 @@ function renderJunctionBase() {
   for (let y = 0; y <= 600; y += 40) base.appendChild(line(0, y, 800, y, "grid-line"));
 
   const ROAD_W = 140, cx = 400, cy = 300;
-
   if (state.shape === "X") {
     base.appendChild(rect(cx - ROAD_W/2, 0, ROAD_W, 600, "road"));
     base.appendChild(rect(0, cy - ROAD_W/2, 800, ROAD_W, "road"));
@@ -368,7 +326,7 @@ function renderJunctionBase() {
     base.appendChild(line(cx, cy + ROAD_W/2, cx, 600, "lane-dash"));
     base.appendChild(line(0, cy, cx - ROAD_W/2, cy, "lane-dash"));
     base.appendChild(line(cx + ROAD_W/2, cy, 800, cy, "lane-dash"));
-    // מעברי חציה קבועים בכל אחת מ-4 הזרועות
+
     drawZebraCrossing(base, cx, cy - ROAD_W/2 - 25, ROAD_W, true);
     drawZebraCrossing(base, cx, cy + ROAD_W/2 + 25, ROAD_W, true);
     drawZebraCrossing(base, cx + ROAD_W/2 + 25, cy, ROAD_W, false);
@@ -379,15 +337,13 @@ function renderJunctionBase() {
     base.appendChild(line(cx, 0, cx, cy - ROAD_W/2, "lane-dash"));
     base.appendChild(line(0, cy, cx - ROAD_W/2, cy, "lane-dash"));
     base.appendChild(line(cx + ROAD_W/2, cy, 800, cy, "lane-dash"));
-    // מעברי חציה קבועים ב-3 הזרועות של צומת T (מזרח, מערב, צפון)
+
     drawZebraCrossing(base, cx, cy - ROAD_W/2 - 25, ROAD_W, true);
     drawZebraCrossing(base, cx + ROAD_W/2 + 25, cy, ROAD_W, false);
     drawZebraCrossing(base, cx - ROAD_W/2 - 25, cy, ROAD_W, false);
   }
 }
 
-// מציר מעבר חציה (פסי זברה) קבוע כחלק מהסקיצה הבסיסית, לא אלמנט הניתן לגרירה.
-// vertical=true means the crosswalk sits on a vertical road (stripes run horizontally, spread along y after rotation)
 function drawZebraCrossing(base, x, y, roadWidth, vertical) {
   const g = document.createElementNS(SVG_NS, "g");
   g.setAttribute("class", "crosswalk-base");
@@ -411,6 +367,7 @@ function line(x1,y1,x2,y2,cls){
   el.setAttribute("x2",x2); el.setAttribute("y2",y2);
   el.setAttribute("class",cls); return el;
 }
+
 function rect(x,y,w,h,cls){
   const el = document.createElementNS(SVG_NS,"rect");
   el.setAttribute("x",x); el.setAttribute("y",y);
@@ -439,8 +396,7 @@ function clientToSvgPoint(svg, clientX, clientY) {
 }
 
 function addElement(typeId, x, y) {
-  const el = { id: state.nextId++, type: typeId, x, y, action: "add" };
-  if (HAS_DIRECTION.includes(typeId)) el.direction = "straight";
+  const el = { id: state.nextId++, type: typeId, x, y, action: "add", rotation: 0 };
   state.elements.push(el);
   renderPlacedElement(el);
   renderBoqTable();
@@ -450,65 +406,55 @@ function addElement(typeId, x, y) {
 function renderPlacedElement(elData) {
   const svg = document.getElementById("sketchSvg");
   const type = ELEMENT_TYPES.find(t => t.id === elData.type);
-
   const g = document.createElementNS(SVG_NS, "g");
   g.setAttribute("class", "placed-el");
   g.dataset.id = elData.id;
   g.setAttribute("transform", `translate(${elData.x},${elData.y})`);
 
   const ring = document.createElementNS(SVG_NS, "circle");
-  ring.setAttribute("cx", 0); ring.setAttribute("cy", -8); ring.setAttribute("r", 20);
+  ring.setAttribute("cx", 0); ring.setAttribute("cy", 0); ring.setAttribute("r", 20);
   ring.setAttribute("fill", "none"); ring.setAttribute("stroke", ACTION_COLOR[elData.action]);
   ring.setAttribute("stroke-width", 2.5); ring.setAttribute("class", "action-ring");
   g.appendChild(ring);
 
-  const icon = document.createElementNS(SVG_NS, "g");
-  icon.innerHTML = type.icon();
-  g.appendChild(icon);
-
-  const supportsDirection = HAS_DIRECTION.includes(elData.type);
-  if (supportsDirection) {
-    const arrows = document.createElementNS(SVG_NS, "g");
-    arrows.setAttribute("class", "dir-arrows");
-    arrows.innerHTML = directionArrowsMarkup(elData.direction || "none");
-    g.appendChild(arrows);
-  }
+  const iconGroup = document.createElementNS(SVG_NS, "g");
+  iconGroup.setAttribute("transform", `rotate(${elData.rotation || 0})`);
+  iconGroup.innerHTML = type.icon();
+  g.appendChild(iconGroup);
 
   const label = document.createElementNS(SVG_NS, "text");
-  label.setAttribute("class", "el-label"); label.setAttribute("y", 24);
+  label.setAttribute("class", "el-label"); label.setAttribute("y", 32);
   label.textContent = labelText(type, elData);
   g.appendChild(label);
 
+  // כפתור מחיקה
   const delCircle = document.createElementNS(SVG_NS, "circle");
   delCircle.setAttribute("class", "el-remove");
   delCircle.setAttribute("cx", 16); delCircle.setAttribute("cy", -22); delCircle.setAttribute("r", 7);
   const delX = document.createElementNS(SVG_NS, "text");
   delX.setAttribute("class", "el-remove-x");
   delX.setAttribute("x", 16); delX.setAttribute("y", -19.5); delX.textContent = "×";
-  
   g.appendChild(delCircle); g.appendChild(delX);
 
-  let dirCircle = null, dirIcon = null;
-  if (supportsDirection) {
-    dirCircle = document.createElementNS(SVG_NS, "circle");
-    dirCircle.setAttribute("cx", -16); dirCircle.setAttribute("cy", -22); dirCircle.setAttribute("r", 7);
-    dirCircle.setAttribute("fill", "var(--primary)"); dirCircle.style.cursor = "pointer";
-    dirIcon = document.createElementNS(SVG_NS, "text");
-    dirIcon.setAttribute("x", -16); dirIcon.setAttribute("y", -19.5);
-    dirIcon.setAttribute("fill", "#0f172a"); dirIcon.setAttribute("font-size", "9");
-    dirIcon.setAttribute("font-weight", "bold"); dirIcon.setAttribute("text-anchor", "middle");
-    dirIcon.style.pointerEvents = "none";
-    dirIcon.textContent = "↑";
-    g.appendChild(dirCircle); g.appendChild(dirIcon);
-    dirCircle.addEventListener("click", (e) => { e.stopPropagation(); cycleDirection(elData.id); });
-  }
+  // כפתור סיבוב כיוון (מסתובב ב-90 מעלות)
+  const rotCircle = document.createElementNS(SVG_NS, "circle");
+  rotCircle.setAttribute("cx", -16); rotCircle.setAttribute("cy", -22); rotCircle.setAttribute("r", 7);
+  rotCircle.setAttribute("fill", "var(--primary)"); rotCircle.style.cursor = "pointer";
+  const rotText = document.createElementNS(SVG_NS, "text");
+  rotText.setAttribute("x", -16); rotText.setAttribute("y", -19.5);
+  rotText.setAttribute("fill", "#0f172a"); rotText.setAttribute("font-size", "9");
+  rotText.setAttribute("font-weight", "bold"); rotText.setAttribute("text-anchor", "middle");
+  rotText.style.pointerEvents = "none";
+  rotText.textContent = "↺";
+  g.appendChild(rotCircle); g.appendChild(rotText);
 
+  rotCircle.addEventListener("click", (e) => { e.stopPropagation(); rotateElement(elData.id); });
   delCircle.addEventListener("click", (e) => { e.stopPropagation(); removeElement(elData.id); });
-  icon.addEventListener("click", (e) => { e.stopPropagation(); cycleAction(elData.id); });
+  iconGroup.addEventListener("click", (e) => { e.stopPropagation(); cycleAction(elData.id); });
 
   let dragging = false;
   g.addEventListener("pointerdown", (e) => {
-    if (e.target === delCircle || e.target === delX) return;
+    if (e.target === delCircle || e.target === delX || e.target === rotCircle) return;
     dragging = true; g.setPointerCapture(e.pointerId);
   });
   g.addEventListener("pointermove", (e) => {
@@ -518,7 +464,6 @@ function renderPlacedElement(elData) {
     g.setAttribute("transform", `translate(${elData.x},${elData.y})`);
   });
   g.addEventListener("pointerup", () => { dragging = false; });
-
   svg.appendChild(g);
 }
 
@@ -531,31 +476,15 @@ function cycleAction(id) {
   renderBoqTable();
 }
 
-function cycleDirection(id) {
+function rotateElement(id) {
   const el = state.elements.find(e => e.id === id);
   if (!el) return;
-  const idx = DIRECTIONS.indexOf(el.direction || "none");
-  el.direction = DIRECTIONS[(idx + 1) % DIRECTIONS.length];
+  el.rotation = ((el.rotation || 0) + 90) % 360;
   redrawElement(el);
 }
 
-function arrowMarkup() {
-  return `<path d="M0,-9 L4,1 L1.5,1 L1.5,7 L-1.5,7 L-1.5,1 L-4,1 Z" fill="#38bdf8" stroke="#0f172a" stroke-width="0.5"/>`;
-}
-
-function directionArrowsMarkup(direction) {
-  const angles = DIRECTION_ARROWS[direction] || [];
-  if (!angles.length) return "";
-  const arrows = angles.map(a => `<g transform="rotate(${a})">${arrowMarkup()}</g>`).join("");
-  return `<g transform="translate(0,-34)">${arrows}</g>`;
-}
-
 function labelText(type, elData) {
-  let txt = `${type.label} · ${ACTION_LABEL[elData.action]}`;
-  if (HAS_DIRECTION.includes(elData.type) && elData.direction && elData.direction !== "none") {
-    txt += ` · ${DIRECTION_LABEL[elData.direction]}`;
-  }
-  return txt;
+  return `${type.label} · ${ACTION_LABEL[elData.action]}`;
 }
 
 function removeElement(id) {
@@ -613,9 +542,6 @@ function renderBoqTable() {
   });
 }
 
-// -----------------------------------------------------------------------------
-// הפקת דוח מלא (סקיצה + פרטי אתר + כתב כמויות) לחלון נפרד המוכן להדפסה
-// -----------------------------------------------------------------------------
 function bindReportModal() {
   const modal = document.getElementById("reportModal");
   document.getElementById("openReportBtn").addEventListener("click", () => {
@@ -639,7 +565,6 @@ function generateReport() {
   const cableUnderground = document.getElementById("rptCableUnderground").value || "0";
   const notes = document.getElementById("rptNotes").value || "אין הערות נוספות.";
 
-  // שכפול הסקיצה הנוכחית (כולל כל האלמנטים שהוצבו) כתמונת SVG סטטית
   const svgEl = document.getElementById("sketchSvg");
   const svgClone = svgEl.cloneNode(true);
   svgClone.setAttribute("xmlns", SVG_NS);
@@ -726,7 +651,6 @@ function generateReport() {
 # -----------------------------------------------------------------------------
 st.title("🚦 מחולל סקיצות צומת ודוח כתב כמויות")
 
-# סיידבר פרטי דוח
 with st.sidebar:
     st.header("📋 פרטי דוח הפיקוח")
     site_name = st.text_input("שם האתר / צומת", placeholder="לדוגמה: צומת אלנבי / רוטשילד")
@@ -739,7 +663,6 @@ with st.sidebar:
     
     notes = st.text_area("הערות נוספות לדוח", placeholder="פירוט תקלות, דגשים לביצוע...")
 
-# תצוגה ראשית: 2 טאבים (סקיצה אינטראקטיבית / הפקת דוח)
 tab1, tab2 = st.tabs(["🎨 סקיצה אינטראקטיבית", "📄 תצוגת דוח מלא להדפסה"])
 
 with tab1:
@@ -749,7 +672,6 @@ with tab2:
     st.subheader("תצוגת דוח סופי")
     st.info("💡 להדפסה או שמירה כ-PDF, לחץ Ctrl+P במקלדת (או Cmd+P ב-Mac)")
     
-    # תצוגת הדוח
     report_html = f"""
     <div style="background: white; color: black; padding: 25px; border-radius: 8px; font-family: sans-serif; direction: rtl;">
         <h2 style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px;">דוח פיקוח ותשתיות צומת</h2>
@@ -776,6 +698,4 @@ with tab2:
         <p style="background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #ddd;">{notes or 'אין הערות נוספות.'}</p>
     </div>
     """
-    # dedent - Markdown treats 4+ space indented lines as a literal code block,
-    # which is exactly what caused the raw HTML to show up as text instead of rendering.
     st.markdown(textwrap.dedent(report_html), unsafe_allow_html=True)
