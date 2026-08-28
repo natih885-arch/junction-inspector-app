@@ -284,7 +284,6 @@ const ELEMENT_TYPES = [
   { id: "arrowStraightRight", label: "חץ ישר + ימין", icon: () => `<path d="M-2,8 L-2,-4 L-6,-4 L0,-14 L6,-4 L2,-4 L2,3 L5,3 L5,6 L11,1 L5,-4 L5,0 L2,0 L2,8 Z" fill="#ffffff"/>` }
 ];
 
-// הוספת מצב "existing" (קיים)
 const ACTIONS = ["add", "remove", "dismantle", "existing"];
 const ACTION_LABEL = { add: "הוספה", remove: "הסרה", dismantle: "פירוק", existing: "קיים" };
 const ACTION_COLOR = { add: "#2f9e8f", remove: "#d8555a", dismantle: "#d99a2b", existing: "#94a3b8" };
@@ -428,6 +427,7 @@ function renderPlacedElement(elData) {
   g.setAttribute("class", "placed-el");
   g.dataset.id = elData.id;
   g.setAttribute("transform", `translate(${elData.x},${elData.y})`);
+  
   const ring = document.createElementNS(SVG_NS, "circle");
   ring.setAttribute("cx", 0); ring.setAttribute("cy", 0); ring.setAttribute("r", 20);
   ring.setAttribute("fill", "none"); ring.setAttribute("stroke", ACTION_COLOR[elData.action]);
@@ -436,10 +436,20 @@ function renderPlacedElement(elData) {
     ring.setAttribute("stroke-dasharray", "4 3");
   }
   g.appendChild(ring);
+  
+  // אזור לחיצה שקוף המאפשר זיהוי קל של קליקים להחלפת מצב
+  const clickArea = document.createElementNS(SVG_NS, "circle");
+  clickArea.setAttribute("cx", 0); clickArea.setAttribute("cy", 0); clickArea.setAttribute("r", 20);
+  clickArea.setAttribute("fill", "transparent");
+  clickArea.style.cursor = "pointer";
+  g.appendChild(clickArea);
+
   const iconGroup = document.createElementNS(SVG_NS, "g");
   iconGroup.setAttribute("transform", `rotate(${elData.rotation || 0})`);
+  iconGroup.style.pointerEvents = "none";
   iconGroup.innerHTML = type.icon();
   g.appendChild(iconGroup);
+  
   const label = document.createElementNS(SVG_NS, "text");
   label.setAttribute("class", "el-label el-labelui"); label.setAttribute("y", 32);
   label.textContent = labelText(type, elData);
@@ -468,20 +478,33 @@ function renderPlacedElement(elData) {
   
   rotCircle.addEventListener("click", (e) => { e.stopPropagation(); rotateElement(elData.id); });
   delCircle.addEventListener("click", (e) => { e.stopPropagation(); removeElement(elData.id); });
-  iconGroup.addEventListener("click", (e) => { e.stopPropagation(); cycleAction(elData.id); });
   
   let dragging = false;
-  g.addEventListener("pointerdown", (e) => {
-    if (e.target === delCircle || e.target === delX || e.target === rotCircle) return;
-    dragging = true; g.setPointerCapture(e.pointerId);
+  let startX = 0, startY = 0;
+  
+  clickArea.addEventListener("pointerdown", (e) => {
+    dragging = false;
+    startX = e.clientX;
+    startY = e.clientY;
+    g.setPointerCapture(e.pointerId);
   });
-  g.addEventListener("pointermove", (e) => {
-    if (!dragging) return;
-    const pt = clientToSvgPoint(svg, e.clientX, e.clientY);
-    elData.x = pt.x; elData.y = pt.y;
-    g.setAttribute("transform", `translate(${elData.x},${elData.y})`);
+  
+  clickArea.addEventListener("pointermove", (e) => {
+    if (Math.hypot(e.clientX - startX, e.clientY - startY) > 5) {
+      dragging = true;
+      const pt = clientToSvgPoint(svg, e.clientX, e.clientY);
+      elData.x = pt.x; elData.y = pt.y;
+      g.setAttribute("transform", `translate(${elData.x},${elData.y})`);
+    }
   });
-  g.addEventListener("pointerup", () => { dragging = false; });
+  
+  clickArea.addEventListener("pointerup", (e) => {
+    if (!dragging) {
+      cycleAction(elData.id);
+    }
+    dragging = false;
+  });
+  
   svg.appendChild(g);
 }
 
@@ -535,7 +558,6 @@ function bindClearButton() {
   });
 }
 
-// חישוב כתב הכמויות תוך התעלמות מאלמנטים במצב "existing"
 function computeBoq() {
   return ELEMENT_TYPES.map(type => {
     const counts = { add: 0, remove: 0, dismantle: 0 };
