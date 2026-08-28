@@ -428,6 +428,7 @@ function renderPlacedElement(elData) {
   g.dataset.id = elData.id;
   g.setAttribute("transform", `translate(${elData.x},${elData.y})`);
   
+  // טבעת מצב
   const ring = document.createElementNS(SVG_NS, "circle");
   ring.setAttribute("cx", 0); ring.setAttribute("cy", 0); ring.setAttribute("r", 20);
   ring.setAttribute("fill", "none"); ring.setAttribute("stroke", ACTION_COLOR[elData.action]);
@@ -436,25 +437,21 @@ function renderPlacedElement(elData) {
     ring.setAttribute("stroke-dasharray", "4 3");
   }
   g.appendChild(ring);
-  
-  // אזור לחיצה שקוף המאפשר זיהוי קל של קליקים להחלפת מצב
-  const clickArea = document.createElementNS(SVG_NS, "circle");
-  clickArea.setAttribute("cx", 0); clickArea.setAttribute("cy", 0); clickArea.setAttribute("r", 20);
-  clickArea.setAttribute("fill", "transparent");
-  clickArea.style.cursor = "pointer";
-  g.appendChild(clickArea);
 
+  // אריזה פנימית של האייקון
   const iconGroup = document.createElementNS(SVG_NS, "g");
   iconGroup.setAttribute("transform", `rotate(${elData.rotation || 0})`);
   iconGroup.style.pointerEvents = "none";
   iconGroup.innerHTML = type.icon();
   g.appendChild(iconGroup);
   
+  // תווית שם האלמנט ומצבו
   const label = document.createElementNS(SVG_NS, "text");
   label.setAttribute("class", "el-label el-labelui"); label.setAttribute("y", 32);
   label.textContent = labelText(type, elData);
   g.appendChild(label);
   
+  // 1. כפתור מחיקה (X) - בפינה ימנית עליונה
   const delCircle = document.createElementNS(SVG_NS, "circle");
   delCircle.setAttribute("class", "el-remove el-removeui");
   delCircle.setAttribute("cx", 16); delCircle.setAttribute("cy", -22); delCircle.setAttribute("r", 7);
@@ -463,6 +460,7 @@ function renderPlacedElement(elData) {
   delX.setAttribute("x", 16); delX.setAttribute("y", -19.5); delX.textContent = "×";
   g.appendChild(delCircle); g.appendChild(delX);
   
+  // 2. כפתור סיבוב (↺) - בפינה שמאלית עליונה
   const rotCircle = document.createElementNS(SVG_NS, "circle");
   rotCircle.setAttribute("class", "el-rotui");
   rotCircle.setAttribute("cx", -16); rotCircle.setAttribute("cy", -22); rotCircle.setAttribute("r", 7);
@@ -476,32 +474,42 @@ function renderPlacedElement(elData) {
   rotText.textContent = "↺";
   g.appendChild(rotCircle); g.appendChild(rotText);
   
+  // 3. כפתור החלפת מצב (⇄) - בפינה שמאלית תחתונה
+  const modeCircle = document.createElementNS(SVG_NS, "circle");
+  modeCircle.setAttribute("class", "el-modeui");
+  modeCircle.setAttribute("cx", -16); modeCircle.setAttribute("cy", 22); modeCircle.setAttribute("r", 7);
+  modeCircle.setAttribute("fill", "#e2e8f0"); modeCircle.style.cursor = "pointer";
+  const modeText = document.createElementNS(SVG_NS, "text");
+  modeText.setAttribute("class", "el-modeui");
+  modeText.setAttribute("x", -16); modeText.setAttribute("y", 24.5);
+  modeText.setAttribute("fill", "#0f172a"); modeText.setAttribute("font-size", "9");
+  modeText.setAttribute("font-weight", "bold"); modeText.setAttribute("text-anchor", "middle");
+  modeText.style.pointerEvents = "none";
+  modeText.textContent = "⇄";
+  g.appendChild(modeCircle); g.appendChild(modeText);
+
+  // אירועי לחיצה על כפתורי הפעולה
   rotCircle.addEventListener("click", (e) => { e.stopPropagation(); rotateElement(elData.id); });
   delCircle.addEventListener("click", (e) => { e.stopPropagation(); removeElement(elData.id); });
-  
+  modeCircle.addEventListener("click", (e) => { e.stopPropagation(); cycleAction(elData.id); });
+
+  // גרירה נקייה של האלמנט בסקיצה
   let dragging = false;
-  let startX = 0, startY = 0;
   
-  clickArea.addEventListener("pointerdown", (e) => {
-    dragging = false;
-    startX = e.clientX;
-    startY = e.clientY;
+  g.addEventListener("pointerdown", (e) => {
+    dragging = true;
     g.setPointerCapture(e.pointerId);
   });
   
-  clickArea.addEventListener("pointermove", (e) => {
-    if (Math.hypot(e.clientX - startX, e.clientY - startY) > 5) {
-      dragging = true;
+  g.addEventListener("pointermove", (e) => {
+    if (dragging) {
       const pt = clientToSvgPoint(svg, e.clientX, e.clientY);
       elData.x = pt.x; elData.y = pt.y;
       g.setAttribute("transform", `translate(${elData.x},${elData.y})`);
     }
   });
   
-  clickArea.addEventListener("pointerup", (e) => {
-    if (!dragging) {
-      cycleAction(elData.id);
-    }
+  g.addEventListener("pointerup", (e) => {
     dragging = false;
   });
   
@@ -649,7 +657,7 @@ async function generateReport() {
 
   const svgEl = document.getElementById("sketchSvg");
   const svgClone = svgEl.cloneNode(true);
-  svgClone.querySelectorAll('.action-ringui, .el-labelui, .el-removeui, .el-rotui').forEach(el => el.remove());
+  svgClone.querySelectorAll('.action-ringui, .el-labelui, .el-removeui, .el-rotui, .el-modeui').forEach(el => el.remove());
   svgClone.setAttribute("xmlns", SVG_NS);
   svgClone.style.background = "#0f172a";
   svgClone.style.width = "100%";
