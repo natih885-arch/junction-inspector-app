@@ -26,6 +26,7 @@ HTML_CODE = """
       --add-color: #2f9e8f;
       --remove-color: #d8555a;
       --dismantle-color: #d99a2b;
+      --existing-color: #94a3b8;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
     body { background-color: var(--bg-color); color: var(--text-main); padding: 15px; }
@@ -185,7 +186,7 @@ HTML_CODE = """
       <svg id="sketchSvg" viewBox="0 0 800 600"></svg>
     </div>
     <div class="boq-panel">
-      <h3>כתב כמויות אוטומטי (מתוך הסקיצה)</h3>
+      <h3>כתב כמויות אוטומטי (לביצוע בלבד - ללא קיים)</h3>
       <table id="boqTable">
         <thead>
           <tr>
@@ -232,8 +233,6 @@ HTML_CODE = """
         <input type="number" id="rptCableUnderground" min="0" step="5" value="0">
       </div>
     </div>
-
-    <!-- העלאת תמונות ישירות בחלון הדוח -->
     <h4 style="color: var(--primary); margin-top: 5px;">📸 העלאת תמונות לדוח</h4>
     <div class="modal-field">
       <label>צילום לפני הסדר</label>
@@ -251,7 +250,6 @@ HTML_CODE = """
       <label>חיבורי הארקה</label>
       <input type="file" id="imgGrounding" multiple accept="image/*">
     </div>
-
     <div class="modal-field">
       <label>הערות נוספות</label>
       <textarea id="rptNotes" rows="3" placeholder="פירוט תקלות, דגשים לביצוע..."></textarea>
@@ -285,9 +283,11 @@ const ELEMENT_TYPES = [
   { id: "arrowStraightLeft", label: "חץ ישר + שמאל", icon: () => `<path d="M-2,8 L-2,0 L-5,0 L-5,-4 L-11,1 L-5,6 L-5,3 L-2,3 L-2,-4 L-6,-4 L0,-14 L6,-4 L2,-4 L2,8 Z" fill="#ffffff"/>` },
   { id: "arrowStraightRight", label: "חץ ישר + ימין", icon: () => `<path d="M-2,8 L-2,-4 L-6,-4 L0,-14 L6,-4 L2,-4 L2,3 L5,3 L5,6 L11,1 L5,-4 L5,0 L2,0 L2,8 Z" fill="#ffffff"/>` }
 ];
-const ACTIONS = ["add", "remove", "dismantle"];
-const ACTION_LABEL = { add: "הוספה", remove: "הסרה", dismantle: "פירוק" };
-const ACTION_COLOR = { add: "#2f9e8f", remove: "#d8555a", dismantle: "#d99a2b" };
+
+// הוספת מצב "existing" (קיים)
+const ACTIONS = ["add", "remove", "dismantle", "existing"];
+const ACTION_LABEL = { add: "הוספה", remove: "הסרה", dismantle: "פירוק", existing: "קיים" };
+const ACTION_COLOR = { add: "#2f9e8f", remove: "#d8555a", dismantle: "#d99a2b", existing: "#94a3b8" };
 const state = { shape: "X", elements: [], nextId: 1 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -432,6 +432,9 @@ function renderPlacedElement(elData) {
   ring.setAttribute("cx", 0); ring.setAttribute("cy", 0); ring.setAttribute("r", 20);
   ring.setAttribute("fill", "none"); ring.setAttribute("stroke", ACTION_COLOR[elData.action]);
   ring.setAttribute("stroke-width", 2.5); ring.setAttribute("class", "action-ringui");
+  if (elData.action === "existing") {
+    ring.setAttribute("stroke-dasharray", "4 3");
+  }
   g.appendChild(ring);
   const iconGroup = document.createElementNS(SVG_NS, "g");
   iconGroup.setAttribute("transform", `rotate(${elData.rotation || 0})`);
@@ -532,10 +535,13 @@ function bindClearButton() {
   });
 }
 
+// חישוב כתב הכמויות תוך התעלמות מאלמנטים במצב "existing"
 function computeBoq() {
   return ELEMENT_TYPES.map(type => {
     const counts = { add: 0, remove: 0, dismantle: 0 };
-    state.elements.filter(e => e.type === type.id).forEach(e => counts[e.action]++);
+    state.elements
+      .filter(e => e.type === type.id && e.action !== "existing")
+      .forEach(e => counts[e.action]++);
     return { label: type.label, ...counts };
   });
 }
@@ -572,7 +578,6 @@ function bindReportModal() {
   });
 }
 
-// המרת קבצי תמונות שנבחרו במודאל למחרוזות Base64
 async function readFilesAsBase64(inputEl) {
   const files = Array.from(inputEl.files || []);
   const promises = files.map(file => new Promise((resolve) => {
@@ -591,7 +596,6 @@ async function generateReport() {
   const cableUnderground = document.getElementById("rptCableUnderground").value || "0";
   const notes = document.getElementById("rptNotes").value || "אין הערות נוספות.";
 
-  // טעינת התמונות מהטופס במודאל
   const imgsBefore = await readFilesAsBase64(document.getElementById("imgBefore"));
   const imgsAfter = await readFilesAsBase64(document.getElementById("imgAfter"));
   const imgsCabinet = await readFilesAsBase64(document.getElementById("imgCabinet"));
@@ -683,7 +687,7 @@ async function generateReport() {
     <h3>כתב כמויות</h3>
     <table class="boq">
       <thead><tr><th>תיאור האלמנט</th><th>הוספה (יח')</th><th>הסרה (יח')</th><th>פירוק (יח')</th></tr></thead>
-      <tbody>${boqRows || '<tr><td colspan="4">לא הוצבו אלמנטים בסקיצה</td></tr>'}</tbody>
+      <tbody>${boqRows || '<tr><td colspan="4">לא הוצבו אלמנטים לביצוע בסקיצה</td></tr>'}</tbody>
     </table>
     <h3>תשתיות כבלים</h3>
     <p style="margin-bottom: 15px;">כבל עילי: ${cableOverhead} מטר &nbsp;|&nbsp; כבל תת-קרקעי: ${cableUnderground} מטר</p>
