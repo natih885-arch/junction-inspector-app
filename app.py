@@ -25,8 +25,7 @@ HTML_CODE = """
       --primary: #38bdf8;
       --add-color: #2f9e8f;
       --remove-color: #d8555a;
-      --dismantle-color: #d99a2b;
-      --existing-color: #94a3b8;
+      --exist-color: #3b82f6;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
     body { background-color: var(--bg-color); color: var(--text-main); padding: 15px; }
@@ -186,14 +185,14 @@ HTML_CODE = """
       <svg id="sketchSvg" viewBox="0 0 800 600"></svg>
     </div>
     <div class="boq-panel">
-      <h3>כתב כמויות אוטומטי (לביצוע בלבד - ללא קיים)</h3>
+      <h3>כתב כמויות אוטומטי (מתוך הסקיצה)</h3>
       <table id="boqTable">
         <thead>
           <tr>
             <th>תיאור האלמנט</th>
             <th>הוספה (יח')</th>
             <th>הסרה (יח')</th>
-            <th>פירוק (יח')</th>
+            <th>קיים (יח')</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -204,7 +203,6 @@ HTML_CODE = """
 <div class="footer-credits">
   כל הזכויות שמורות לנתנאל הררי | 054-5520445
 </div>
-
 <!-- Modal: פרטי הדוח ותמונות -->
 <div class="modal-overlay hidden" id="reportModal">
   <div class="modal-box">
@@ -260,7 +258,6 @@ HTML_CODE = """
     </div>
   </div>
 </div>
-
 <script>
 const SVG_NS = "http://www.w3.org/2000/svg";
 const ELEMENT_TYPES = [
@@ -284,9 +281,10 @@ const ELEMENT_TYPES = [
   { id: "arrowStraightRight", label: "חץ ישר + ימין", icon: () => `<path d="M-2,8 L-2,-4 L-6,-4 L0,-14 L6,-4 L2,-4 L2,3 L5,3 L5,6 L11,1 L5,-4 L5,0 L2,0 L2,8 Z" fill="#ffffff"/>` }
 ];
 
-const ACTIONS = ["add", "remove", "dismantle", "existing"];
-const ACTION_LABEL = { add: "הוספה", remove: "הסרה", dismantle: "פירוק", existing: "קיים" };
-const ACTION_COLOR = { add: "#2f9e8f", remove: "#d8555a", dismantle: "#d99a2b", existing: "#94a3b8" };
+const ACTIONS = ["add", "remove", "exist"];
+const ACTION_LABEL = { add: "הוספה", remove: "הסרה", exist: "קיים" };
+const ACTION_COLOR = { add: "#2f9e8f", remove: "#ef4444", exist: "#3b82f6" };
+
 const state = { shape: "X", elements: [], nextId: 1 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -427,31 +425,38 @@ function renderPlacedElement(elData) {
   g.setAttribute("class", "placed-el");
   g.dataset.id = elData.id;
   g.setAttribute("transform", `translate(${elData.x},${elData.y})`);
-  
-  // טבעת מצב
+
+  // טבעת מצב סביב האלמנט
   const ring = document.createElementNS(SVG_NS, "circle");
   ring.setAttribute("cx", 0); ring.setAttribute("cy", 0); ring.setAttribute("r", 20);
   ring.setAttribute("fill", "none"); ring.setAttribute("stroke", ACTION_COLOR[elData.action]);
   ring.setAttribute("stroke-width", 2.5); ring.setAttribute("class", "action-ringui");
-  if (elData.action === "existing") {
-    ring.setAttribute("stroke-dasharray", "4 3");
-  }
   g.appendChild(ring);
 
-  // אריזה פנימית של האייקון
+  // האייקון עצמו
   const iconGroup = document.createElementNS(SVG_NS, "g");
   iconGroup.setAttribute("transform", `rotate(${elData.rotation || 0})`);
-  iconGroup.style.pointerEvents = "none";
   iconGroup.innerHTML = type.icon();
   g.appendChild(iconGroup);
-  
-  // תווית שם האלמנט ומצבו
+
+  // במידה והמצב הוא הסרה - הוספת איקס אדום בולט מעל האלמנט
+  if (elData.action === "remove") {
+    const xGroup = document.createElementNS(SVG_NS, "g");
+    xGroup.setAttribute("class", "remove-x-overlay");
+    xGroup.innerHTML = `
+      <line x1="-16" y1="-16" x2="16" y2="16" stroke="#ef4444" stroke-width="4.5" stroke-linecap="round"/>
+      <line x1="16" y1="-16" x2="-16" y2="16" stroke="#ef4444" stroke-width="4.5" stroke-linecap="round"/>
+    `;
+    g.appendChild(xGroup);
+  }
+
+  // תווית שם וסטטוס
   const label = document.createElementNS(SVG_NS, "text");
   label.setAttribute("class", "el-label el-labelui"); label.setAttribute("y", 32);
   label.textContent = labelText(type, elData);
   g.appendChild(label);
   
-  // 1. כפתור מחיקה (X) - בפינה ימנית עליונה
+  // כפתור X למחיקת האלמנט (פינה ימנית עליונה)
   const delCircle = document.createElementNS(SVG_NS, "circle");
   delCircle.setAttribute("class", "el-remove el-removeui");
   delCircle.setAttribute("cx", 16); delCircle.setAttribute("cy", -22); delCircle.setAttribute("r", 7);
@@ -460,7 +465,7 @@ function renderPlacedElement(elData) {
   delX.setAttribute("x", 16); delX.setAttribute("y", -19.5); delX.textContent = "×";
   g.appendChild(delCircle); g.appendChild(delX);
   
-  // 2. כפתור סיבוב (↺) - בפינה שמאלית עליונה
+  // כפתור ↺ לסיבוב כיוון (פינה שמאלית עליונה)
   const rotCircle = document.createElementNS(SVG_NS, "circle");
   rotCircle.setAttribute("class", "el-rotui");
   rotCircle.setAttribute("cx", -16); rotCircle.setAttribute("cy", -22); rotCircle.setAttribute("r", 7);
@@ -473,46 +478,38 @@ function renderPlacedElement(elData) {
   rotText.style.pointerEvents = "none";
   rotText.textContent = "↺";
   g.appendChild(rotCircle); g.appendChild(rotText);
-  
-  // 3. כפתור החלפת מצב (⇄) - בפינה שמאלית תחתונה
-  const modeCircle = document.createElementNS(SVG_NS, "circle");
-  modeCircle.setAttribute("class", "el-modeui");
-  modeCircle.setAttribute("cx", -16); modeCircle.setAttribute("cy", 22); modeCircle.setAttribute("r", 7);
-  modeCircle.setAttribute("fill", "#e2e8f0"); modeCircle.style.cursor = "pointer";
-  const modeText = document.createElementNS(SVG_NS, "text");
-  modeText.setAttribute("class", "el-modeui");
-  modeText.setAttribute("x", -16); modeText.setAttribute("y", 24.5);
-  modeText.setAttribute("fill", "#0f172a"); modeText.setAttribute("font-size", "9");
-  modeText.setAttribute("font-weight", "bold"); modeText.setAttribute("text-anchor", "middle");
-  modeText.style.pointerEvents = "none";
-  modeText.textContent = "⇄";
-  g.appendChild(modeCircle); g.appendChild(modeText);
 
-  // אירועי לחיצה על כפתורי הפעולה
+  // כפתור ± לשינוי מצב: הוספה / הסרה / קיים (מרכז תחתון)
+  const actCircle = document.createElementNS(SVG_NS, "circle");
+  actCircle.setAttribute("class", "el-actui");
+  actCircle.setAttribute("cx", 0); actCircle.setAttribute("cy", -22); actCircle.setAttribute("r", 7);
+  actCircle.setAttribute("fill", ACTION_COLOR[elData.action]); actCircle.style.cursor = "pointer";
+  const actText = document.createElementNS(SVG_NS, "text");
+  actText.setAttribute("class", "el-actui");
+  actText.setAttribute("x", 0); actText.setAttribute("y", -19.5);
+  actText.setAttribute("fill", "#ffffff"); actText.setAttribute("font-size", "9");
+  actText.setAttribute("font-weight", "bold"); actText.setAttribute("text-anchor", "middle");
+  actText.style.pointerEvents = "none";
+  actText.textContent = "±";
+  g.appendChild(actCircle); g.appendChild(actText);
+  
   rotCircle.addEventListener("click", (e) => { e.stopPropagation(); rotateElement(elData.id); });
   delCircle.addEventListener("click", (e) => { e.stopPropagation(); removeElement(elData.id); });
-  modeCircle.addEventListener("click", (e) => { e.stopPropagation(); cycleAction(elData.id); });
-
-  // גרירה נקייה של האלמנט בסקיצה
+  actCircle.addEventListener("click", (e) => { e.stopPropagation(); cycleAction(elData.id); });
+  iconGroup.addEventListener("click", (e) => { e.stopPropagation(); cycleAction(elData.id); });
+  
   let dragging = false;
-  
   g.addEventListener("pointerdown", (e) => {
-    dragging = true;
-    g.setPointerCapture(e.pointerId);
+    if (e.target === delCircle || e.target === delX || e.target === rotCircle || e.target === actCircle) return;
+    dragging = true; g.setPointerCapture(e.pointerId);
   });
-  
   g.addEventListener("pointermove", (e) => {
-    if (dragging) {
-      const pt = clientToSvgPoint(svg, e.clientX, e.clientY);
-      elData.x = pt.x; elData.y = pt.y;
-      g.setAttribute("transform", `translate(${elData.x},${elData.y})`);
-    }
+    if (!dragging) return;
+    const pt = clientToSvgPoint(svg, e.clientX, e.clientY);
+    elData.x = pt.x; elData.y = pt.y;
+    g.setAttribute("transform", `translate(${elData.x},${elData.y})`);
   });
-  
-  g.addEventListener("pointerup", (e) => {
-    dragging = false;
-  });
-  
+  g.addEventListener("pointerup", () => { dragging = false; });
   svg.appendChild(g);
 }
 
@@ -568,10 +565,8 @@ function bindClearButton() {
 
 function computeBoq() {
   return ELEMENT_TYPES.map(type => {
-    const counts = { add: 0, remove: 0, dismantle: 0 };
-    state.elements
-      .filter(e => e.type === type.id && e.action !== "existing")
-      .forEach(e => counts[e.action]++);
+    const counts = { add: 0, remove: 0, exist: 0 };
+    state.elements.filter(e => e.type === type.id).forEach(e => counts[e.action]++);
     return { label: type.label, ...counts };
   });
 }
@@ -580,13 +575,13 @@ function renderBoqTable() {
   const tbody = document.querySelector("#boqTable tbody");
   tbody.innerHTML = "";
   computeBoq().forEach(row => {
-    const total = row.add + row.remove + row.dismantle;
+    const total = row.add + row.remove + row.exist;
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${row.label}</td>
       <td class="${row.add ? "" : "zero"}">${row.add}</td>
       <td class="${row.remove ? "" : "zero"}">${row.remove}</td>
-      <td class="${row.dismantle ? "" : "zero"}">${row.dismantle}</td>
+      <td class="${row.exist ? "" : "zero"}">${row.exist}</td>
     `;
     if (total === 0) tr.style.opacity = "0.4";
     tbody.appendChild(tr);
@@ -625,19 +620,19 @@ async function generateReport() {
   const cableOverhead = document.getElementById("rptCableOverhead").value || "0";
   const cableUnderground = document.getElementById("rptCableUnderground").value || "0";
   const notes = document.getElementById("rptNotes").value || "אין הערות נוספות.";
-
+  
   const imgsBefore = await readFilesAsBase64(document.getElementById("imgBefore"));
   const imgsAfter = await readFilesAsBase64(document.getElementById("imgAfter"));
   const imgsCabinet = await readFilesAsBase64(document.getElementById("imgCabinet"));
   const imgsGrounding = await readFilesAsBase64(document.getElementById("imgGrounding"));
-
+  
   const photoCategories = [
     { title: "צילום לפני הסדר", imgs: imgsBefore },
     { title: "צילום אחרי הסדר", imgs: imgsAfter },
     { title: "ארון רמזורים / מנגנון", imgs: imgsCabinet },
     { title: "חיבורי הארקה", imgs: imgsGrounding }
   ];
-
+  
   let photosHtml = "";
   const hasPhotos = photoCategories.some(c => c.imgs.length > 0);
   if (hasPhotos) {
@@ -654,25 +649,25 @@ async function generateReport() {
     });
     photosHtml += `</div>`;
   }
-
+  
   const svgEl = document.getElementById("sketchSvg");
   const svgClone = svgEl.cloneNode(true);
-  svgClone.querySelectorAll('.action-ringui, .el-labelui, .el-removeui, .el-rotui, .el-modeui').forEach(el => el.remove());
+  svgClone.querySelectorAll('.action-ringui, .el-labelui, .el-removeui, .el-rotui, .el-actui').forEach(el => el.remove());
   svgClone.setAttribute("xmlns", SVG_NS);
   svgClone.style.background = "#0f172a";
   svgClone.style.width = "100%";
   svgClone.style.maxWidth = "760px";
   svgClone.style.height = "auto";
+  
   const svgMarkup = new XMLSerializer().serializeToString(svgClone);
-
   const boqRows = computeBoq().map(row => {
-    const total = row.add + row.remove + row.dismantle;
+    const total = row.add + row.remove + row.exist;
     if (total === 0) return "";
     return `<tr>
       <td>${row.label}</td>
       <td>${row.add || "-"}</td>
       <td>${row.remove || "-"}</td>
-      <td>${row.dismantle || "-"}</td>
+      <td>${row.exist || "-"}</td>
     </tr>`;
   }).join("");
 
@@ -716,8 +711,8 @@ async function generateReport() {
     <div class="sketch-box">${svgMarkup}</div>
     <h3>כתב כמויות</h3>
     <table class="boq">
-      <thead><tr><th>תיאור האלמנט</th><th>הוספה (יח')</th><th>הסרה (יח')</th><th>פירוק (יח')</th></tr></thead>
-      <tbody>${boqRows || '<tr><td colspan="4">לא הוצבו אלמנטים לביצוע בסקיצה</td></tr>'}</tbody>
+      <thead><tr><th>תיאור האלמנט</th><th>הוספה (יח')</th><th>הסרה (יח')</th><th>קיים (יח')</th></tr></thead>
+      <tbody>${boqRows || '<tr><td colspan="4">לא הוצבו אלמנטים בסקיצה</td></tr>'}</tbody>
     </table>
     <h3>תשתיות כבלים</h3>
     <p style="margin-bottom: 15px;">כבל עילי: ${cableOverhead} מטר &nbsp;|&nbsp; כבל תת-קרקעי: ${cableUnderground} מטר</p>
